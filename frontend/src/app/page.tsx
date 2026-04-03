@@ -289,6 +289,7 @@ export default function HomePage() {
     error: voiceError,
     toggleListening,
     stopListening,
+    reset,
   } = useVoiceInput({
     language: langConfig.speechCode,
     onFinal: handleVoiceFinal,
@@ -302,6 +303,14 @@ export default function HomePage() {
 
   const displayVoiceState =
     isProcessingChat && voiceState === "done" ? "processing" : voiceState;
+
+  // Auto-reset voice button to idle once AI finishes processing
+  useEffect(() => {
+    if (!isProcessingChat && voiceState === "done") {
+      const t = setTimeout(() => reset(), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [isProcessingChat, voiceState, reset]);
 
   // ---------------------------------------------------------------------------
   // Image/OCR handler

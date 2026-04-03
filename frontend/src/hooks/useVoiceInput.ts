@@ -165,7 +165,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   const toggleListening = useCallback(() => {
     if (voiceState === "listening") {
       stopListening();
-    } else if (voiceState === "idle" || voiceState === "error") {
+    } else if (voiceState === "idle" || voiceState === "error" || voiceState === "done") {
       startListening();
     }
   }, [voiceState, startListening, stopListening]);
