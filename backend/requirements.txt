@@ -1,0 +1,20 @@
+# Susu Books - Backend Dependencies
+# Python 3.11+
+
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Database
+sqlalchemy==2.0.36
+aiosqlite==0.20.0
+
+# Pydantic and settings
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# HTTP client (Ollama)
+httpx==0.28.1
+
+# Utilities
+python-multipart==0.0.18   # multipart/form-data for image upload
