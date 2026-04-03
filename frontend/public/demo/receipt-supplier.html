@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kofi's Wholesale — Receipt</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #d6cfc4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      font-family: 'Share Tech Mono', 'Courier New', Courier, monospace;
+    }
+
+    .receipt-wrap {
+      /* Simulate a slightly rotated receipt on a surface */
+      transform: rotate(-1.2deg);
+      filter: drop-shadow(3px 6px 10px rgba(0,0,0,0.35));
+    }
+
+    .receipt {
+      background: #faf7f0;
+      width: 280px;
+      padding: 0;
+      position: relative;
+      /* Jagged top edge (torn paper) */
+      clip-path: polygon(
+        0% 0%, 3% 2%, 6% 0%, 9% 2.5%, 12% 0.5%, 15% 2%,
+        18% 0%, 21% 2%, 24% 0.5%, 27% 2%, 30% 0%,
+        33% 2.5%, 36% 0.5%, 39% 2%, 42% 0%, 45% 1.5%,
+        48% 0%, 51% 2%, 54% 0.5%, 57% 2%, 60% 0%,
+        63% 2.5%, 66% 0.5%, 69% 2%, 72% 0%, 75% 2%,
+        78% 0.5%, 81% 2%, 84% 0%, 87% 2.5%, 90% 0.5%,
+        93% 2%, 96% 0%, 100% 1.5%,
+        100% 97%, 97% 99%, 94% 97.5%, 91% 99.5%, 88% 97%,
+        85% 99%, 82% 97.5%, 79% 99%, 76% 97%, 73% 99.5%,
+        70% 97%, 67% 99%, 64% 97.5%, 61% 99%, 58% 97%,
+        55% 99%, 52% 97.5%, 49% 99%, 46% 97%, 43% 99.5%,
+        40% 97%, 37% 99%, 34% 97.5%, 31% 99%, 28% 97%,
+        25% 99%, 22% 97.5%, 19% 99%, 16% 97%, 13% 99.5%,
+        10% 97%, 7% 99%, 4% 97.5%, 0% 99%
+      );
+    }
+
+    .receipt-inner {
+      padding: 28px 20px 36px;
+    }
+
+    /* Faded ink / aged paper texture */
+    .receipt::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 23px,
+          rgba(180,160,120,0.07) 23px,
+          rgba(180,160,120,0.07) 24px
+        );
+      pointer-events: none;
+    }
+
+    .store-name {
+      font-size: 1.1rem;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #1a1208;
+      margin-bottom: 2px;
+    }
+    .store-sub {
+      font-size: 0.62rem;
+      text-align: center;
+      color: #5a4a2a;
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+    .store-addr {
+      font-size: 0.6rem;
+      text-align: center;
+      color: #7a6a4a;
+      margin-bottom: 12px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px dashed #b0a080;
+      margin: 8px 0;
+    }
+
+    .receipt-meta {
+      font-size: 0.62rem;
+      color: #5a4a2a;
+      margin-bottom: 8px;
+      line-height: 1.7;
+    }
+    .receipt-meta span { float: right; }
+
+    .items-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.6rem;
+      color: #7a6a4a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 0.68rem;
+      color: #1a1208;
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+    .item-row .item-name { flex: 1; }
+    .item-row .item-qty  { width: 48px; text-align: right; color: #5a4a2a; }
+    .item-row .item-unit-price { width: 54px; text-align: right; color: #5a4a2a; }
+    .item-row .item-total { width: 54px; text-align: right; font-weight: bold; }
+
+    .totals-block {
+      margin-top: 6px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: #1a1208;
+      margin-bottom: 3px;
+    }
+    .total-row.grand {
+      font-size: 0.82rem;
+      font-weight: bold;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid #b0a080;
+    }
+    .total-row.paid {
+      color: #2a5a1a;
+    }
+
+    .footer-msg {
+      margin-top: 14px;
+      font-size: 0.6rem;
+      text-align: center;
+      color: #7a6a4a;
+      line-height: 1.8;
+    }
+    .barcode {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 0.5rem;
+      color: #b0a080;
+      letter-spacing: 3px;
+    }
+    .barcode-img {
+      display: flex;
+      justify-content: center;
+      gap: 1px;
+      margin: 4px auto;
+    }
+    .barcode-img .bar {
+      background: #1a1208;
+      height: 22px;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-wrap">
+    <div class="receipt">
+      <div class="receipt-inner">
+
+        <div class="store-name">Kofi's Wholesale</div>
+        <div class="store-sub">Grain & Provisions Merchant</div>
+        <div class="store-addr">Makola Market, Accra · Tel: 024-555-0188</div>
+
+        <hr class="divider" />
+
+        <div class="receipt-meta">
+          Date: <span>Wed 02 Apr 2025</span>
+        </div>
+        <div class="receipt-meta">
+          Time: <span>06:22 AM</span>
+        </div>
+        <div class="receipt-meta">
+          Receipt #: <span>KWS-04189</span>
+        </div>
+        <div class="receipt-meta">
+          Customer: <span>Ama (Stall C-14)</span>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="items-header">
+          <span>Item</span>
+          <span style="margin-right:52px">Qty</span>
+          <span style="margin-right:2px">Unit ₵</span>
+          <span>Total</span>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="item-row">
+          <span class="item-name">Rice (50kg bags)</span>
+          <span class="item-qty">10</span>
+          <span class="item-unit-price">120.00</span>
+          <span class="item-total">1,200.00</span>
+        </div>
+
+        <div class="item-row">
+          <span class="item-name">Plantains (bunch)</span>
+          <span class="item-qty">12</span>
+          <span class="item-unit-price">20.00</span>
+          <span class="item-total">240.00</span>
+        </div>
+
+        <div class="item-row">
+          <span class="item-name">Onions (kg)</span>
+          <span class="item-qty">25</span>
+          <span class="item-unit-price">6.50</span>
+          <span class="item-total">162.50</span>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="totals-block">
+          <div class="total-row">
+            <span>Subtotal</span>
+            <span>₵1,602.50</span>
+          </div>
+          <div class="total-row">
+            <span>Market levy (0%)</span>
+            <span>₵0.00</span>
+          </div>
+          <div class="total-row grand">
+            <span>TOTAL DUE</span>
+            <span>₵1,602.50</span>
+          </div>
+          <div class="total-row paid">
+            <span>Cash Paid</span>
+            <span>₵1,602.50</span>
+          </div>
+          <div class="total-row paid">
+            <span>Change</span>
+            <span>₵0.00</span>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="footer-msg">
+          GOODS SOLD ARE NOT RETURNABLE<br />
+          Thank you for your business!<br />
+          God bless you — Kofi
+        </div>
+
+        <div class="barcode">
+          <div class="barcode-img">
+            <!-- Simulated barcode bars -->
+            <div class="bar" style="width:1px"></div><div class="bar" style="width:3px; background:transparent"></div>
+            <div class="bar" style="width:2px"></div><div class="bar" style="width:2px; background:transparent"></div>
+            <div class="bar" style="width:1px"></div><div class="bar" style="width:1px; background:transparent"></div>
+            <div class="bar" style="width:3px"></div><div class="bar" style="width:1px; background:transparent"></div>
+            <div class="bar" style="width:1px"></div><div class="bar" style="width:3px; background:transparent"></div>
+            <div class="bar" style="width:2px"></div><div class="bar" style="width:1px; background:transparent"></div>
+            <div class="bar" style="width:1px"></div><div class="bar" style="width:2px; background:transparent"></div>
+            <div class="bar" style="width:3px"></div><div class="bar" style="width:1px; background:transparent"></div>
+            <div class="bar" style="width:1px"></div><div class="bar" style="width:1px; background:transparent"></div>
+            <div class="bar" style="width:2px"></div><div class="bar" style="width:3px; background:transparent"></div>
+            <div class="bar" style="width:1px"></div><div class="bar" style="width:1px; background:transparent"></div>
+            <div class="bar" style="width:3px"></div><div class="bar" style="width:2px; background:transparent"></div>
+            <div class="bar" style="width:1px"></div><div class="bar" style="width:1px; background:transparent"></div>
+            <div class="bar" style="width:2px"></div><div class="bar" style="width:3px; background:transparent"></div>
+            <div class="bar" style="width:1px"></div>
+          </div>
+          *KWS-04189-2025*
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

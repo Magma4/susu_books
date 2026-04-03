@@ -1,0 +1,60 @@
+version: "3.9"
+
+# Susu Books — Docker Compose
+# Runs the FastAPI backend (port 8000) and Next.js frontend (port 3000).
+# Ollama is expected on the HOST at localhost:11434 — not containerized.
+# On Linux, host.docker.internal is mapped via extra_hosts below.
+
+services:
+  # ---------------------------------------------------------------------------
+  # FastAPI Backend
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: susu-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - DATABASE_URL=sqlite:////data/susu_books.db
+      - DB_ECHO=false
+      - DEBUG=false
+    volumes:
+      # Persist SQLite database on the host
+      - susu-data:/data
+    extra_hosts:
+      # On Linux, allow containers to reach host services
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Next.js Frontend
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Browser talks directly to the backend via host port mapping
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: susu-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  susu-data:
+    driver: local

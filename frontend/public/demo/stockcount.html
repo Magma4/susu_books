@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ama's Stock Count</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Caveat:wght@400;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #6b5a3a;
+      background-image:
+        radial-gradient(ellipse at 20% 30%, #7a6545 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 70%, #584830 0%, transparent 55%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .cardboard-wrap {
+      transform: rotate(-0.7deg);
+      filter: drop-shadow(5px 10px 18px rgba(0,0,0,0.55));
+    }
+
+    .cardboard {
+      background: #c8a96e;
+      background-image:
+        /* Cardboard texture via repeating gradients */
+        repeating-linear-gradient(
+          92deg,
+          rgba(255,255,255,0.03) 0px,
+          rgba(255,255,255,0.03) 1px,
+          transparent 1px,
+          transparent 4px
+        ),
+        repeating-linear-gradient(
+          0deg,
+          rgba(0,0,0,0.04) 0px,
+          rgba(0,0,0,0.04) 1px,
+          transparent 1px,
+          transparent 6px
+        ),
+        linear-gradient(
+          160deg,
+          #d4b478 0%,
+          #c09050 30%,
+          #c8a96e 60%,
+          #b89050 100%
+        );
+      width: 340px;
+      min-height: 460px;
+      position: relative;
+      padding: 28px 26px 32px;
+      border-radius: 3px;
+      /* Corrugated edge hint */
+      border: 1px solid #a07840;
+    }
+
+    /* Wear marks / fold line */
+    .cardboard::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      width: 1px; height: 100%;
+      background: rgba(0,0,0,0.06);
+    }
+
+    /* Corner fold */
+    .corner-fold {
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 0; height: 0;
+      border-style: solid;
+      border-width: 0 0 32px 32px;
+      border-color: transparent transparent #a07840 transparent;
+    }
+    .corner-fold::after {
+      content: '';
+      position: absolute;
+      bottom: -32px;
+      right: 0;
+      width: 0; height: 0;
+      border-style: solid;
+      border-width: 32px 32px 0 0;
+      border-color: #b89050 transparent transparent transparent;
+    }
+
+    .heading {
+      font-family: 'Permanent Marker', cursive;
+      font-size: 1.5rem;
+      color: #1a0a00;
+      text-align: center;
+      margin-bottom: 4px;
+      text-shadow: 1px 1px 0 rgba(255,255,255,0.15);
+    }
+
+    .subheading {
+      font-family: 'Caveat', cursive;
+      font-size: 1rem;
+      color: #3a2010;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 2px dashed rgba(90,60,20,0.45);
+      margin: 10px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'Caveat', cursive;
+    }
+
+    thead tr th {
+      font-size: 0.82rem;
+      color: #3a2010;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 4px;
+      border-bottom: 2px solid rgba(90,60,20,0.4);
+      text-align: left;
+    }
+
+    thead tr th:last-child { text-align: right; }
+    thead tr th:nth-child(2) { text-align: center; }
+    thead tr th:nth-child(3) { text-align: right; }
+
+    tbody tr td {
+      padding: 7px 4px;
+      font-size: 1.12rem;
+      color: #1a0a00;
+      vertical-align: middle;
+      border-bottom: 1px solid rgba(90,60,20,0.15);
+    }
+
+    tbody tr td:nth-child(2) { text-align: center; }
+    tbody tr td:nth-child(3) { text-align: right; }
+    tbody tr td:last-child { text-align: right; }
+
+    .item-emoji { margin-right: 5px; }
+
+    .status-ok   { color: #1a5a1a; font-weight: 700; }
+    .status-low  { color: #8b2500; font-weight: 700; }
+    .status-warn { color: #7a5a00; font-weight: 700; }
+
+    .tally {
+      font-family: 'Caveat', cursive;
+      font-size: 1.35rem;
+      color: #3a1500;
+      letter-spacing: 2px;
+    }
+
+    .notes-section {
+      margin-top: 16px;
+    }
+    .notes-label {
+      font-family: 'Permanent Marker', cursive;
+      font-size: 0.95rem;
+      color: #3a1500;
+      margin-bottom: 6px;
+    }
+    .note-line {
+      font-family: 'Caveat', cursive;
+      font-size: 1.05rem;
+      color: #1a0a00;
+      line-height: 1.7;
+      padding-left: 8px;
+    }
+    .note-line::before {
+      content: '→ ';
+      color: #8b2500;
+    }
+
+    .date-stamp {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      font-family: 'Caveat', cursive;
+      font-size: 0.8rem;
+      color: #5a3a10;
+      text-align: right;
+      line-height: 1.4;
+    }
+
+    /* Sticker-style badge */
+    .badge {
+      display: inline-block;
+      background: #1a5a1a;
+      color: #fff;
+      font-family: 'Caveat', cursive;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+    .badge.red { background: #8b2500; }
+  </style>
+</head>
+<body>
+  <div class="cardboard-wrap">
+    <div class="cardboard">
+
+      <div class="date-stamp">
+        Wed 2 Apr<br />Evening count
+      </div>
+
+      <div class="heading">📦 STOCK COUNT</div>
+      <div class="subheading">Ama's Stall — Makola Market C-14</div>
+
+      <hr class="divider" />
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="item-emoji">🌾</span>Rice</td>
+            <td>
+              <!-- Tally marks: IIII I = 6 -->
+              <span class="tally">𝄺𝄺 𝄾</span>
+            </td>
+            <td>6 bags</td>
+            <td><span class="status-ok">✓ OK</span></td>
+          </tr>
+          <tr>
+            <td><span class="item-emoji">🧅</span>Onions</td>
+            <td>
+              <span class="tally">𝄺𝄺𝄺𝄺</span>
+            </td>
+            <td>~20 kg</td>
+            <td><span class="status-ok">✓ OK</span></td>
+          </tr>
+          <tr>
+            <td><span class="item-emoji">🫒</span>Palm oil</td>
+            <td>
+              <span class="tally">𝄾𝄾𝄾</span>
+            </td>
+            <td>3 L</td>
+            <td><span class="status-low">⚠ LOW!</span></td>
+          </tr>
+          <tr>
+            <td><span class="item-emoji">🍅</span>Tomatoes</td>
+            <td>
+              <span class="tally">𝄾</span>
+            </td>
+            <td>1 crate</td>
+            <td><span class="status-low">⚠ LOW!</span></td>
+          </tr>
+          <tr>
+            <td><span class="item-emoji">🍌</span>Plantains</td>
+            <td>
+              <span class="tally">𝄺𝄺𝄾𝄾𝄾</span>
+            </td>
+            <td>~8 bunches</td>
+            <td><span class="status-warn">~ OK</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr class="divider" />
+
+      <div class="notes-section">
+        <div class="notes-label">📝 Notes for tomorrow</div>
+        <div class="note-line">Restock palm oil — call Abena tonight</div>
+        <div class="note-line">Buy 4+ crates tomatoes early Friday</div>
+        <div class="note-line">Rice still good, skip Friday order</div>
+      </div>
+
+      <hr class="divider" style="margin-top:14px" />
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-family:'Caveat',cursive;">
+        <span style="font-size:0.9rem; color:#3a2010;">Done by: <strong>Ama</strong></span>
+        <span><span class="badge">COUNTED</span> &nbsp; <span class="badge red">2 ALERTS</span></span>
+      </div>
+
+      <div class="corner-fold"></div>
+    </div>
+  </div>
+</body>
+</html>

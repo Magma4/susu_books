@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Ollama / Gemma 4
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "gemma4:31b-instruct"
+    ollama_model: str = "gemma4:e2b"
     ollama_timeout: int = 120  # seconds
     ollama_max_retries: int = 3
 

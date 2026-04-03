@@ -2,6 +2,8 @@
 const nextConfig = {
   // All data fetching is client-side against the FastAPI backend
   reactStrictMode: true,
+  // Required for Docker multi-stage build
+  output: "standalone",
 
   // Allow images from localhost (for future receipt previews)
   images: {

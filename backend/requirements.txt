@@ -18,3 +18,4 @@ httpx==0.28.1
 
 # Utilities
 python-multipart==0.0.18   # multipart/form-data for image upload
+greenlet==3.1.1            # required for SQLAlchemy asyncio
