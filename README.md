@@ -62,7 +62,7 @@ graph TB
     end
 
     subgraph AI["🤖 Ollama (local)"]
-        G4[Gemma 4\n31B-instruct\nor 26B MoE]
+        G4[Gemma 4\ne2b / 31B-instruct\nor 26B MoE]
     end
 
     V -->|text / transcript| API
@@ -96,7 +96,7 @@ User: "Sold 3 bags of rice at 180 cedis"
 |-----------|---------|-------|
 | [Ollama](https://ollama.ai/download) | latest | Runs Gemma 4 locally |
 | Docker + Docker Compose | v2+ | Or: Python 3.11 + Node 20 |
-| Disk space | ~21 GB free | For Gemma 4 31B model |
+| Disk space | ~2 GB free | For Gemma 4 E2B (edge) model |
 
 ### One-command setup (Docker)
 
@@ -104,8 +104,8 @@ User: "Sold 3 bags of rice at 180 cedis"
 git clone https://github.com/YOUR_USERNAME/susu-books.git
 cd susu-books
 
-# 1. Install Ollama and pull the model (once, ~20 min on first run)
-ollama pull gemma4:31b-instruct
+# 1. Install Ollama and pull the model (once)
+ollama pull gemma4:e2b
 
 # 2. Start everything
 bash setup.sh
@@ -277,7 +277,7 @@ Gemma 4 will extract all transactions and offer to record them.
 
 ```env
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma4:31b-instruct
+OLLAMA_MODEL=gemma4:e2b
 DATABASE_URL=sqlite:///susu_books.db
 DEBUG=false
 ```
@@ -299,7 +299,8 @@ Built for the **[Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gem
 **Why Gemma 4?**
 - 128K context window handles long transaction histories and multi-turn conversations
 - Multimodal vision: photograph receipts, handwritten notes, cardboard stock counts
-- Efficient MoE architecture (`gemma4:26b-a4b-instruct`) makes offline deployment viable on modest hardware
+- `gemma4:e2b` (default) runs on laptops with 8GB RAM — ideal for offline edge deployment
+- Larger variants (`31b-instruct`, `26b-a4b-instruct`) available for higher accuracy when hardware allows
 - Multilingual understanding without fine-tuning — critical for West African languages
 
 ---

@@ -29,8 +29,9 @@ for arg in "$@"; do
   esac
 done
 
-OLLAMA_MODEL="gemma4:31b-instruct"
-OLLAMA_MODEL_LITE="gemma4:26b-a4b-instruct"
+OLLAMA_MODEL="gemma4:e2b"
+OLLAMA_MODEL_FULL="gemma4:31b-instruct"
+OLLAMA_MODEL_MOE="gemma4:26b-a4b-instruct"
 
 # =============================================================================
 print_header() {
@@ -94,22 +95,31 @@ models = [m['name'] for m in data.get('models', [])]
 print(' '.join(models))
 " 2>/dev/null || echo "")
 
-  if echo "$AVAILABLE" | grep -q "gemma4:31b"; then
+  if echo "$AVAILABLE" | grep -q "gemma4:e2b"; then
+    ok "Gemma 4 E2B already downloaded"
+    OLLAMA_MODEL="gemma4:e2b"
+  elif echo "$AVAILABLE" | grep -q "gemma4:31b"; then
     ok "Gemma 4 31B already downloaded"
+    OLLAMA_MODEL="$OLLAMA_MODEL_FULL"
   elif echo "$AVAILABLE" | grep -q "gemma4:26b"; then
-    ok "Gemma 4 26B MoE already downloaded (will use instead of 31B)"
-    OLLAMA_MODEL="$OLLAMA_MODEL_LITE"
+    ok "Gemma 4 26B MoE already downloaded"
+    OLLAMA_MODEL="$OLLAMA_MODEL_MOE"
   else
     echo ""
-    echo -e "  ${BOLD}Pulling $OLLAMA_MODEL (~20GB)...${NC}"
-    echo -e "  ${YELLOW}This will take a while on first run.${NC}"
+    echo -e "  ${BOLD}Pulling $OLLAMA_MODEL (lightweight edge model)...${NC}"
+    echo -e "  ${YELLOW}This will take a few minutes on first run.${NC}"
     echo ""
 
-    # Try 31B first; fall back to lighter MoE variant
+    # Try e2b first; fall back to MoE then full
     if ! ollama pull "$OLLAMA_MODEL"; then
-      warn "Failed to pull $OLLAMA_MODEL. Trying lighter MoE variant..."
-      ollama pull "$OLLAMA_MODEL_LITE"
-      OLLAMA_MODEL="$OLLAMA_MODEL_LITE"
+      warn "Failed to pull $OLLAMA_MODEL. Trying full 31B model..."
+      if ! ollama pull "$OLLAMA_MODEL_FULL"; then
+        warn "Failed. Trying MoE variant..."
+        ollama pull "$OLLAMA_MODEL_MOE"
+        OLLAMA_MODEL="$OLLAMA_MODEL_MOE"
+      else
+        OLLAMA_MODEL="$OLLAMA_MODEL_FULL"
+      fi
     fi
     ok "Model downloaded: $OLLAMA_MODEL"
 
