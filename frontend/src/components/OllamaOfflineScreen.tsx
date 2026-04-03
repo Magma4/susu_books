@@ -120,10 +120,10 @@ function OllamaSetupSteps({
     {
       key: "pull",
       number: "2",
-      title: "Download the Gemma 4 model (~20GB)",
+      title: "Download the Gemma 4 model",
       description: "Open your terminal and run:",
-      code: "ollama pull gemma4:31b-instruct",
-      note: "Or the lighter version: gemma4:26b-a4b-instruct",
+      code: "ollama pull gemma4:e2b",
+      note: "Larger models also work: gemma4:31b-instruct or gemma4:26b-a4b-instruct",
     },
     {
       key: "serve",
