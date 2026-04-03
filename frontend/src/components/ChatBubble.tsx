@@ -35,7 +35,7 @@ export default function ChatBubble({ messages, isTyping }: ChatBubbleProps) {
       </div>
 
       {/* Message thread */}
-      <div className="px-4 py-3 space-y-3 max-h-48 overflow-y-auto">
+      <div className="px-4 py-3 space-y-3 max-h-72 overflow-y-auto">
         {messages.map((msg) => (
           <MessageRow key={msg.id} message={msg} />
         ))}
