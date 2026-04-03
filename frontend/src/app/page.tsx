@@ -474,8 +474,16 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-5">
 
-            {/* Left: Transaction feed (60%) */}
-            <div className="lg:col-span-3 order-2 lg:order-1">
+            {/* Left: Chat reply + Transaction feed (60%) */}
+            <div className="lg:col-span-3 order-2 lg:order-1 space-y-4">
+              {/* AI conversation — shown above the ledger when active */}
+              {(chatMessages.length > 0 || isProcessingChat) && (
+                <ChatBubble
+                  messages={chatMessages.slice(-6)}
+                  isTyping={isProcessingChat}
+                />
+              )}
+
               <TransactionFeed
                 transactions={transactions}
                 isLoading={isLoadingInitial}
@@ -497,13 +505,6 @@ export default function HomePage() {
                 summary={dailySummary}
                 backendOnline={backendOnline}
               />
-
-              {chatMessages.length > 0 && (
-                <ChatBubble
-                  messages={chatMessages}
-                  isTyping={isProcessingChat}
-                />
-              )}
             </div>
           </div>
         </div>
