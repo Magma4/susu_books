@@ -122,8 +122,8 @@ function OllamaSetupSteps({
       number: "2",
       title: "Download the Gemma 4 model",
       description: "Open your terminal and run:",
-      code: "ollama pull gemma4:e2b",
-      note: "Larger models also work: gemma4:31b-instruct or gemma4:26b-a4b-instruct",
+      code: "ollama pull gemma4:31b-instruct",
+      note: "You can also use gemma4:26b-a4b-instruct if that fits your machine better.",
     },
     {
       key: "serve",

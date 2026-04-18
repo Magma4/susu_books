@@ -1,320 +1,282 @@
-# 📒 Susu Books
+# Susu Books
 
-**Voice-first AI business copilot for informal economy workers**
+Offline, voice-first AI bookkeeping for market traders, street vendors, and smallholder farmers.
 
-> *"Susu"* (Twi/Ga) — a savings collective rooted in trust and community accounting.
+Susu Books lets a trader speak naturally about purchases, sales, and expenses in English, Twi, Hausa, Nigerian Pidgin, Swahili, or mixed market speech. Gemma 4 runs locally through Ollama, extracts structured transaction data through tool calls, and the backend updates the ledger, inventory, and reports. Every user-facing reply comes from human-written language templates, so the app stays trustworthy even in low-resource languages.
 
-Susu Books lets market traders, street vendors, and smallholder farmers record sales, purchases, and expenses by simply **speaking in their own language** — no smartphone literacy required, no internet needed after setup. Gemma 4 running locally via Ollama understands the message, extracts structured data, and updates the ledger automatically.
+## What Makes It Different
 
----
+- Voice-first UX with one primary action: tap and talk.
+- Fully offline after setup: Ollama, FastAPI, and SQLite all run locally.
+- Hybrid multilingual architecture: Gemma 4 extracts; templates speak back.
+- Receipt and handwritten note support through local image upload.
+- Weighted-average-cost inventory tracking, daily summaries, weekly reports, and lender-friendly credit profile export.
+- Warm, touch-friendly dashboard designed for low-literacy, mobile-first use.
 
-## 🎥 Demo
+## Hybrid Architecture
 
-**Ama's Wednesday at Makola Market, Accra** — 10-step automated demo:
+Susu Books deliberately separates understanding from response generation:
 
-| Step | What Ama says | What happens |
-|------|--------------|--------------|
-| 1 | "I bought 10 bags of rice from Kofi for 120 cedis each" | Purchase recorded, inventory updated |
-| 2 | "Sold 3 bags of rice at 180 cedis each to Maame" | Sale recorded, profit calculated |
-| 3 | "I bought 4 crates of tomatoes from Abena for 50 each" | Stock restocked |
-| 4 | "Sold 2 crates of tomatoes at 80 cedis each" | Revenue logged |
-| 5 | "Transport to market today cost 15 cedis" | Expense categorized |
-| 6 | "Sold 8 kg of onions at 12 cedis per kg" | Quantity × price computed |
-| 7 | "I bought 10 liters of palm oil from Abena for 35 each" | WAC inventory updated |
-| 8 | "Sold 5 bunches of plantains at 38 cedis each" | Sale recorded |
-| 9 | "Market stall fee today was 8 cedis" | Overhead tracked |
-| 10 | "How did I do today?" | Full daily P&L summary |
+1. The trader speaks in any supported language or code-switched mix.
+2. Gemma 4 receives the message with a strict extraction prompt and tool schemas.
+3. Gemma 4 returns tool calls only, such as `record_purchase` or `daily_summary`.
+4. FastAPI executes the tool, writes to SQLite, and computes the business result.
+5. The backend renders the final reply from a verified language template.
 
-Click **"Watch Demo — Ama's Day"** in the bottom bar to run the demo automatically, or speak/type any of the above yourself.
+That means the model never improvises trader-facing Twi or Hausa text. We use Gemma 4 where it is strongest, then hand off the final wording to deterministic templates the user can learn to trust.
 
----
+## Core Functions
 
-## ✨ Features
+The extraction engine can call exactly these eight tools:
 
-- **Voice input** — Web Speech API with one-tap recording; falls back gracefully to keyboard
-- **Camera / OCR** — Photograph a handwritten receipt and Gemma 4 extracts all line items
-- **7 AI functions** — `record_purchase`, `record_sale`, `record_expense`, `check_inventory`, `daily_summary`, `weekly_report`, `export_credit_profile`
-- **Multi-language** — English, Twi (Akan), Hausa, Nigerian Pidgin, Swahili
-- **100% offline after setup** — Gemma 4 runs locally via Ollama; SQLite stores all data
-- **Low-stock alerts** — Automatic warnings when items fall below threshold
-- **Weekly trend** — Pure SVG sparkline showing 7-day profit trajectory
-- **Credit profile** — Export a lightweight financial summary for mobile-money lenders
+- `record_purchase`
+- `record_sale`
+- `record_expense`
+- `check_inventory`
+- `daily_summary`
+- `weekly_report`
+- `export_credit_profile`
+- `clarify_input`
 
----
+## Demo Flow
 
-## 🏗 Architecture
+The seeded demo data represents Ama, a market trader in Accra, with 14 days of realistic trading history. The frontend also includes a guided demo mode that auto-plays a day in the market.
 
-```mermaid
-graph TB
-    subgraph Browser["🌐 Browser (Next.js 14)"]
-        V[Voice Button\nWeb Speech API]
-        C[Camera Button\nfile capture]
-        UI[Dashboard\nTransactions · Inventory · Trends]
-    end
+Suggested live demo sequence:
 
-    subgraph Backend["⚙️ FastAPI Backend"]
-        API["/api/chat\n/api/chat/image"]
-        GS[GemmaService\nTool-calling loop]
-        LS[LedgerService]
-        IS[InventoryService\nWAC calculation]
-        RS[ReportService]
-        DB[(SQLite\nTransactions\nInventory\nDailySummary)]
-    end
+1. Ask: `I bought 10 bags of rice from Kofi for 120 cedis each`
+2. Ask: `Sold 3 bags of rice at 180 cedis each to Maame`
+3. Ask: `Transport to market today cost 15 cedis`
+4. Ask in Pidgin: `How today go?`
+5. Ask in Twi: `Me onion no aka sen?`
+6. Upload a receipt or handwritten note through the camera flow
 
-    subgraph AI["🤖 Ollama (local)"]
-        G4[Gemma 4\ne2b / 31B-instruct\nor 26B MoE]
-    end
+There is also a submission-friendly runbook in [demo-script.md](demo-script.md).
 
-    V -->|text / transcript| API
-    C -->|base64 image| API
-    API --> GS
-    GS <-->|tool calls / results| G4
-    GS --> LS --> DB
-    GS --> IS --> DB
-    GS --> RS --> DB
-    DB --> UI
-```
+## Stack
 
-### How tool calling works
+- Frontend: Next.js 14, React, TypeScript, Tailwind CSS
+- Backend: FastAPI, SQLAlchemy, SQLite
+- AI: Gemma 4 through Ollama tool calling
+- Voice input: Browser Web Speech API
+- Voice output: Browser SpeechSynthesis API
+- Vision: Gemma 4 multimodal image understanding through Ollama
+- Templates: JSON translation files under [backend/templates](backend/templates)
 
-Susu Books sends a system prompt plus all 7 function schemas to Gemma 4. Gemma returns either a plain text reply or a `tool_use` block. The backend executes the function, feeds the result back, and iterates up to 10 times until Gemma returns a final natural-language confirmation.
+## Quick Start
 
-```
-User: "Sold 3 bags of rice at 180 cedis"
-  → Gemma: tool_call { name: "record_sale", args: { item: "rice", qty: 3, price: 180 } }
-  → Backend executes record_sale → writes DB → returns { success: true, revenue: 540 }
-  → Gemma: "Done! You sold 3 bags of rice for ₵540. Your profit on this batch is ₵180."
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-| Dependency | Version | Notes |
-|-----------|---------|-------|
-| [Ollama](https://ollama.ai/download) | latest | Runs Gemma 4 locally |
-| Docker + Docker Compose | v2+ | Or: Python 3.11 + Node 20 |
-| Disk space | ~2 GB free | For Gemma 4 E2B (edge) model |
-
-### One-command setup (Docker)
+### Option 1: One-command setup
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/susu-books.git
 cd susu-books
-
-# 1. Install Ollama and pull the model (once)
-ollama pull gemma4:e2b
-
-# 2. Start everything
 bash setup.sh
 ```
 
-Open **http://localhost:3000** — the app loads with 2 weeks of pre-seeded demo data.
+What `setup.sh` does:
 
-### Manual setup (no Docker)
+- verifies Ollama is installed and reachable
+- prefers `gemma4:31b-instruct`
+- falls back to `gemma4:26b-a4b-instruct`
+- falls back again to `gemma4:e2b` on smaller machines
+- prepares backend and frontend environment files
+- starts Docker services by default
+- seeds two weeks of demo data unless `--no-seed` is passed
+
+Flags:
+
+- `--dev`: run backend and frontend locally with hot reload
+- `--no-docker`: skip Docker and use Python plus npm directly
+- `--no-seed`: start with an empty database
+
+### Option 2: Docker Compose directly
+
+Requirements:
+
+- Ollama installed on the host and reachable at `http://localhost:11434`
+- one Gemma 4 model pulled locally
 
 ```bash
-# Terminal 1 — Backend
-cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env          # edit OLLAMA_MODEL if needed
-python seed.py                # optional: load demo data
-uvicorn main:app --port 8000 --reload
+ollama pull gemma4:31b-instruct
+docker compose up --build
+```
 
-# Terminal 2 — Frontend
-cd frontend
+The backend container connects to host Ollama through `host.docker.internal`, and SQLite is stored in the named Docker volume `susu-data`.
+
+Production-minded defaults are already wired into `docker-compose.yml`:
+
+- backend docs are disabled unless `API_DOCS_ENABLED=true`
+- security headers stay enabled
+- AI endpoints are rate-limited
+- containers run read-only with a writable `/data` volume for SQLite and `/tmp` tmpfs
+- the backend runs as a non-root user
+
+### Option 3: Manual local development
+
+```bash
+# Backend
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python seed.py
+uvicorn main:app --reload --port 8000
+
+# Frontend
+cd ../frontend
 npm install
 echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
 npm run dev
 ```
 
-Open **http://localhost:3000**
+Open:
 
-### setup.sh flags
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Backend docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-| Flag | Effect |
-|------|--------|
-| `--no-docker` | Use Python venv + npm dev instead of Docker |
-| `--no-seed` | Skip loading demo data |
-| `--dev` | Same as `--no-docker` but with hot-reload |
+## Production Deploy Notes
 
----
+Before you put Susu Books on a public URL, set these values explicitly:
 
-## 📁 Project Structure
+- `NEXT_PUBLIC_API_URL` to your HTTPS backend origin
+- `ALLOWED_HOSTS` to your real domain names
+- `CORS_ORIGINS` to the frontend origin you will serve
+- `API_DOCS_ENABLED=false`
+- `OLLAMA_MODEL` to the exact Gemma 4 model actually installed on that machine
 
+You should also:
+
+- terminate TLS with a reverse proxy such as Nginx, Caddy, or Cloudflare Tunnel
+- keep Ollama on the same machine or private network as the backend
+- back up the `/data` Docker volume or `backend/susu_books.db` regularly
+- use a machine with enough RAM for your chosen Gemma 4 variant
+
+## Verification
+
+Backend checks:
+
+```bash
+cd backend
+.venv/bin/python -m unittest discover -s ../tests -p "test_*.py" -v
+python3 -m py_compile *.py routers/*.py services/*.py
 ```
+
+Frontend checks:
+
+```bash
+cd frontend
+npm run type-check
+npm run lint
+npm run build
+```
+
+## API Surface
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/chat` | Voice or text message -> tool calls -> template response |
+| `POST` | `/api/chat/image` | Image OCR and extraction through Gemma 4 vision |
+| `GET` | `/api/health` | Backend, Ollama, and database health |
+| `GET` | `/api/languages` | Supported UI/template languages |
+| `GET` | `/api/transactions` | Transaction feed with filters |
+| `GET` | `/api/inventory` | Current stock levels |
+| `GET` | `/api/inventory/check/alerts` | Low-stock and zero-stock alerts |
+| `GET` | `/api/summary/daily` | Daily P&L summary |
+| `GET` | `/api/summary/weekly` | Seven-day report |
+| `GET` | `/api/export/credit-profile` | Credit profile export |
+| `GET` | `/api/export/transactions.csv` | Download ledger as CSV |
+| `GET` | `/api/export/backup.json` | Download full JSON backup |
+
+## Error Handling
+
+Phase 3 adds submission-grade error handling on the backend:
+
+- unsupported image types return `415`
+- oversized uploads return `413`
+- bad request payloads return structured `422` validation errors
+- known application failures return structured `4xx` or `502` responses
+- unhandled exceptions return a consistent `500` JSON payload and are logged server-side
+- SQLite runs with WAL mode and a busy timeout to reduce lock contention during UI polling
+
+The frontend already degrades gracefully when:
+
+- microphone permission is denied
+- no strong local TTS voice exists for the selected language
+- Ollama is offline or the configured model is missing
+
+## Seed Data
+
+The demo seed script at [backend/seed.py](backend/seed.py) creates:
+
+- 14 days of transactions for Ama
+- purchases, sales, and operating expenses
+- realistic low-stock alerts for palm oil and tomatoes
+- cached daily summaries for faster dashboard load
+- inventory rebuilt through the same services used in production
+
+This is intentional: the demo data exercises the exact ledger, inventory, and reporting paths used by live voice transactions.
+
+## Fine-Tuning
+
+Phase 4 adds an Unsloth fine-tuning pipeline under [training](training) for improving extraction accuracy without changing the hybrid template-based response design.
+
+It includes:
+
+- a synthetic multilingual dataset generator covering the live eight-tool contract
+- balanced train and validation data in [training/data](training/data)
+- an Unsloth LoRA training script in [training/train_unsloth.py](training/train_unsloth.py)
+- a benchmark script in [training/benchmark_extraction.py](training/benchmark_extraction.py)
+- end-to-end instructions in [training/README.md](training/README.md)
+
+The fine-tuned model is still extraction-only. User-facing responses remain deterministic templates.
+
+## Project Structure
+
+```text
 susu-books/
 ├── backend/
-│   ├── main.py                 # FastAPI app, CORS, lifespan
-│   ├── config.py               # Settings (pydantic-settings)
-│   ├── database.py             # Async SQLAlchemy + aiosqlite
-│   ├── models.py               # ORM: Transaction, Inventory, DailySummary
-│   ├── schemas.py              # Pydantic v2 I/O schemas
-│   ├── seed.py                 # 14-day demo data generator
-│   ├── requirements.txt
-│   ├── Dockerfile
+│   ├── main.py
+│   ├── config.py
+│   ├── database.py
+│   ├── models.py
+│   ├── schemas.py
+│   ├── seed.py
+│   ├── templates/
+│   │   ├── en.json
+│   │   ├── tw.json
+│   │   ├── ha.json
+│   │   ├── pcm.json
+│   │   └── sw.json
 │   ├── routers/
-│   │   ├── ai.py               # POST /api/chat, /api/chat/image
-│   │   ├── transactions.py     # CRUD for transactions
-│   │   ├── inventory.py        # Inventory read/update
-│   │   └── reports.py          # Daily/weekly summaries, credit profile
 │   └── services/
-│       ├── gemma_service.py    # Ollama tool-calling orchestration
-│       ├── ledger_service.py   # Purchase/sale/expense writes
-│       ├── inventory_service.py # WAC stock management
-│       └── report_service.py   # P&L aggregations
-│
 ├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx        # Main dashboard (three-zone layout)
-│   │   │   ├── layout.tsx      # Metadata, fonts, viewport
-│   │   │   └── globals.css     # Tailwind + custom keyframes
-│   │   ├── components/
-│   │   │   ├── VoiceButton.tsx
-│   │   │   ├── CameraButton.tsx
-│   │   │   ├── TransactionFeed.tsx
-│   │   │   ├── TransactionCard.tsx
-│   │   │   ├── DailySummary.tsx
-│   │   │   ├── WeeklySpark.tsx
-│   │   │   ├── InventoryPanel.tsx
-│   │   │   ├── ActionPanel.tsx
-│   │   │   ├── ChatBubble.tsx
-│   │   │   ├── LanguageSelector.tsx
-│   │   │   ├── LoadingPulse.tsx
-│   │   │   ├── OllamaOfflineScreen.tsx
-│   │   │   └── DemoMode.tsx
-│   │   ├── hooks/
-│   │   │   ├── useVoiceInput.ts
-│   │   │   ├── useVoiceOutput.ts
-│   │   │   └── useApi.ts
-│   │   └── lib/
-│   │       ├── api.ts
-│   │       ├── types.ts
-│   │       └── theme.ts
-│   ├── public/demo/            # Sample receipts for OCR testing
-│   │   ├── receipt-supplier.html
-│   │   ├── receipt-handwritten.html
-│   │   └── stockcount.html
-│   ├── tailwind.config.ts
-│   ├── next.config.js
-│   └── Dockerfile
-│
+├── training/
 ├── docker-compose.yml
 ├── setup.sh
-└── README.md
+├── demo-script.md
+└── writeup.md
 ```
 
----
+## Language Support
 
-## 🌍 Language Support
+Current response-template languages:
 
-| Language | BCP-47 code | Speech recognition | TTS |
-|----------|------------|-------------------|-----|
-| English | `en-GH` | ✅ | ✅ |
-| Twi (Akan) | `ak-GH` | ✅ (Chrome) | ⚠️ fallback to en-GH |
-| Hausa | `ha-NG` | ✅ (Chrome) | ✅ |
-| Nigerian Pidgin | `en-NG` | ✅ | ✅ |
-| Swahili | `sw-KE` | ✅ | ✅ |
+- English: `en`
+- Twi: `tw`
+- Hausa: `ha`
+- Nigerian Pidgin: `pcm`
+- Swahili: `sw`
 
-Gemma 4 understands multilingual input naturally — users can mix languages in a single sentence (code-switching is common in West African markets).
+Speech recognition and speech synthesis depend on the browser and installed device voices, so voice quality varies by platform. The app still works with typed input even when speech services are limited.
 
----
+## Submission Notes
 
-## 🔧 API Reference
+For the Gemma 4 Good Hackathon submission:
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/chat` | Send a text message to Gemma 4 |
-| `POST` | `/api/chat/image` | Send a receipt image for OCR + extraction |
-| `GET`  | `/api/health` | Check backend + Ollama status |
-| `GET`  | `/api/transactions` | List transactions (filter by date/type) |
-| `GET`  | `/api/inventory` | Current stock levels |
-| `GET`  | `/api/inventory/check/alerts` | Low-stock items |
-| `GET`  | `/api/reports/summary/daily` | Today's P&L |
-| `GET`  | `/api/reports/summary/weekly` | 7-day trend data |
-| `GET`  | `/api/reports/export/credit-profile` | Lightweight credit summary |
+- the live demo should show the seeded Ama scenario plus one live multilingual transaction
+- the code repository should link directly to this repo
+- the Kaggle writeup can start from [writeup.md](writeup.md)
+- the video outline can start from [demo-script.md](demo-script.md)
 
-Interactive docs available at **http://localhost:8000/docs** (Swagger UI).
-
----
-
-## 🎨 Design System
-
-The UI uses an **earth-tone palette** inspired by Ghana's markets — warm greens, amber, and natural paper tones that feel familiar rather than clinical.
-
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `primary-900` | `#1B5E20` | Header, voice button, CTAs |
-| `accent-800` | `#E65100` | Demo mode, amber alerts |
-| `background` | `#FAFAF5` | App background (off-white) |
-| `text-primary` | `#1C1B1A` | Body text |
-| `success` | `#2E7D32` | Sale transactions |
-| `danger` | `#C62828` | Low stock, expenses |
-
-Typography: **DM Sans** (UI) + **DM Mono** (numbers/code).
-
----
-
-## 🧪 Testing the OCR Feature
-
-Open the demo receipts in your browser, take a screenshot (or print-to-PDF), then photograph the screen with the camera button in Susu Books:
-
-- `public/demo/receipt-supplier.html` — Printed thermal receipt from Kofi's Wholesale
-- `public/demo/receipt-handwritten.html` — Handwritten sales ledger on ruled paper
-- `public/demo/stockcount.html` — Stock count on cardboard with tally marks
-
-Gemma 4 will extract all transactions and offer to record them.
-
----
-
-## ⚙️ Environment Variables
-
-### Backend (`backend/.env`)
-
-```env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma4:e2b
-DATABASE_URL=sqlite:///susu_books.db
-DEBUG=false
-```
-
-### Frontend (`frontend/.env.local`)
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
----
-
-## 🏆 Hackathon
-
-Built for the **[Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gemma-4-good)** on Kaggle (deadline May 18, 2026).
-
-**Track**: Social Good / Financial Inclusion
-
-**Why Gemma 4?**
-- 128K context window handles long transaction histories and multi-turn conversations
-- Multimodal vision: photograph receipts, handwritten notes, cardboard stock counts
-- `gemma4:e2b` (default) runs on laptops with 8GB RAM — ideal for offline edge deployment
-- Larger variants (`31b-instruct`, `26b-a4b-instruct`) available for higher accuracy when hardware allows
-- Multilingual understanding without fine-tuning — critical for West African languages
-
----
-
-## 📄 License
-
-Apache 2.0 — see [LICENSE](LICENSE).
-
-Models: [Gemma 4](https://ai.google.dev/gemma) is distributed under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
-
----
-
-## 🙏 Acknowledgements
-
-- **Google DeepMind** — Gemma 4 model family
-- **Ollama** — making local LLM deployment painless
-- **Market women everywhere** who have been doing mental bookkeeping for generations — this is for you.
+Susu Books is designed to be honest about the limits of current multilingual generation while still delivering a genuinely useful offline AI product.

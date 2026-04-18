@@ -34,8 +34,10 @@ export interface InventoryItem {
   unit?: string;
   avg_cost?: number;
   last_purchase_price?: number;
+  last_sale_price?: number;
   low_stock_threshold: number;
   is_low_stock: boolean;
+  created_at?: string;
   updated_at: string;
 }
 
@@ -115,6 +117,7 @@ export interface ChatResponse {
   response: string;
   transactions: Transaction[];
   function_calls: FunctionCallRecord[];
+  language?: string;
   language_detected?: string;
 }
 

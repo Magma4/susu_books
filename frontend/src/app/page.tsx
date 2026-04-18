@@ -32,7 +32,14 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoiceOutput } from "@/hooks/useVoiceOutput";
 import { useApi } from "@/hooks/useApi";
 
-import { sendChat, getHealth } from "@/lib/api";
+import {
+  downloadBackupJson,
+  downloadTransactionsCsv,
+  getHealth,
+  sendChat,
+  type HealthStatus,
+} from "@/lib/api";
+import { formatItemLabel } from "@/lib/display";
 import type {
   ChatMessage,
   LanguageCode,
@@ -40,6 +47,7 @@ import type {
   ImageChatResponse,
 } from "@/lib/types";
 import { LANGUAGES } from "@/lib/types";
+import { normalizeTranscriptDraft } from "@/lib/transcript";
 import { formatHeaderDate } from "@/styles/theme";
 
 // Lightweight unique ID generator
@@ -72,17 +80,27 @@ export default function HomePage() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isRetryingHealth, setIsRetryingHealth] = useState(false);
+  const [draftSource, setDraftSource] = useState<"voice" | null>(null);
+  const [exportState, setExportState] = useState<"csv" | "backup" | null>(null);
 
   // Connectivity state (more nuanced than just backendOnline)
   const [healthState, setHealthState] = useState<{
     checked: boolean;
     backendReachable: boolean;
-    ollamaReachable: boolean;
+    providerReachable: boolean;
     modelLoaded: boolean;
-  }>({ checked: false, backendReachable: false, ollamaReachable: false, modelLoaded: false });
+    aiProvider: "ollama" | null;
+  }>({
+    checked: false,
+    backendReachable: false,
+    providerReachable: false,
+    modelLoaded: false,
+    aiProvider: null,
+  });
 
   const textInputRef = useRef<HTMLInputElement>(null);
   const toastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const speechNoticeRef = useRef<Set<string>>(new Set());
 
   // ---------------------------------------------------------------------------
   // API data
@@ -103,22 +121,26 @@ export default function HomePage() {
   // ---------------------------------------------------------------------------
   // Health check (initial + manual retry)
   // ---------------------------------------------------------------------------
-  const checkHealth = useCallback(async () => {
+  const checkHealth = useCallback(async (): Promise<HealthStatus | null> => {
     try {
       const health = await getHealth();
       setHealthState({
         checked: true,
         backendReachable: true,
-        ollamaReachable: health.ollama_reachable,
+        providerReachable: health.provider_reachable ?? health.ollama_reachable,
         modelLoaded: health.model_loaded,
+        aiProvider: health.ai_provider ?? "ollama",
       });
+      return health;
     } catch {
       setHealthState({
         checked: true,
         backendReachable: false,
-        ollamaReachable: false,
+        providerReachable: false,
         modelLoaded: false,
+        aiProvider: null,
       });
+      return null;
     }
   }, []);
 
@@ -128,12 +150,12 @@ export default function HomePage() {
 
   const handleRetryHealth = useCallback(async () => {
     setIsRetryingHealth(true);
-    await checkHealth();
-    if (healthState.backendReachable) {
+    const health = await checkHealth();
+    if (health) {
       await refreshAll();
     }
     setIsRetryingHealth(false);
-  }, [checkHealth, healthState.backendReachable, refreshAll]);
+  }, [checkHealth, refreshAll]);
 
   // ---------------------------------------------------------------------------
   // Toast notifications
@@ -152,20 +174,107 @@ export default function HomePage() {
   );
 
   useEffect(() => {
+    const timers = toastTimersRef.current;
     return () => {
-      toastTimersRef.current.forEach((t) => clearTimeout(t));
+      timers.forEach((t) => clearTimeout(t));
     };
   }, []);
+
+  const handleExportLedger = useCallback(async () => {
+    if (!backendOnline) {
+      addToast("error", "The backend is offline, so I can’t export your ledger right now.", 5000);
+      return;
+    }
+    setExportState("csv");
+    try {
+      const filename = await downloadTransactionsCsv();
+      addToast("success", `Ledger exported: ${filename}`);
+    } catch (error) {
+      addToast("error", buildUserFriendlyError(error), 6000);
+    } finally {
+      setExportState(null);
+    }
+  }, [addToast, backendOnline]);
+
+  const handleBackupData = useCallback(async () => {
+    if (!backendOnline) {
+      addToast("error", "The backend is offline, so I can’t create a backup right now.", 5000);
+      return;
+    }
+    setExportState("backup");
+    try {
+      const filename = await downloadBackupJson(false);
+      addToast("success", `Backup saved: ${filename}`);
+    } catch (error) {
+      addToast("error", buildUserFriendlyError(error), 6000);
+    } finally {
+      setExportState(null);
+    }
+  }, [addToast, backendOnline]);
 
   // ---------------------------------------------------------------------------
   // Speech synthesis
   // ---------------------------------------------------------------------------
   const langConfig = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
 
-  const { speak } = useVoiceOutput({
+  const {
+    speak,
+    isEnabled: voiceRepliesEnabled,
+    setEnabled: setVoiceRepliesEnabled,
+    canSpeakLanguage,
+  } = useVoiceOutput({
     defaultLang: langConfig.synthesisCode,
     rate: 0.9,
   });
+
+  useEffect(() => {
+    if (voiceRepliesEnabled && !canSpeakLanguage(langConfig.synthesisCode)) {
+      setVoiceRepliesEnabled(false);
+      if (!speechNoticeRef.current.has(`reply-${langConfig.code}`)) {
+        speechNoticeRef.current.add(`reply-${langConfig.code}`);
+        addToast(
+          "info",
+          `Spoken replies are off for ${langConfig.nativeName} on this device. Text replies still work well.`,
+          5000
+        );
+      }
+    }
+  }, [
+    addToast,
+    canSpeakLanguage,
+    langConfig.code,
+    langConfig.nativeName,
+    langConfig.synthesisCode,
+    setVoiceRepliesEnabled,
+    voiceRepliesEnabled,
+  ]);
+
+  const speakReply = useCallback(
+    (text: string) => {
+      if (!voiceRepliesEnabled) return;
+      const didSpeak = speak(text, langConfig.synthesisCode);
+      if (didSpeak) return;
+
+      setVoiceRepliesEnabled(false);
+      if (!speechNoticeRef.current.has(`synth-${langConfig.code}`)) {
+        speechNoticeRef.current.add(`synth-${langConfig.code}`);
+        addToast(
+          "info",
+          `Your device does not have a good ${langConfig.nativeName} voice installed, so spoken replies were turned off.`,
+          5500
+        );
+      }
+    },
+    [
+      addToast,
+      langConfig.code,
+      langConfig.nativeName,
+      langConfig.synthesisCode,
+      setVoiceRepliesEnabled,
+      speak,
+      voiceRepliesEnabled,
+    ]
+  );
 
   // ---------------------------------------------------------------------------
   // Core: process a message through the AI pipeline
@@ -218,7 +327,9 @@ export default function HomePage() {
         // Ingest any new transactions
         if (res.transactions.length > 0) {
           ingestTransactions(res.transactions);
-          const names = res.transactions.map((t) => t.item).join(", ");
+          const names = res.transactions
+            .map((t) => formatItemLabel(t.item))
+            .join(", ");
           addToast(
             "success",
             `Recorded: ${names} (${res.transactions.length} transaction${res.transactions.length > 1 ? "s" : ""})`
@@ -236,7 +347,7 @@ export default function HomePage() {
         }
 
         // Speak the response
-        speak(res.response, langConfig.synthesisCode);
+        speakReply(res.response);
       } catch (e) {
         const errMsg = buildUserFriendlyError(e);
         const errBubble: ChatMessage = {
@@ -251,18 +362,30 @@ export default function HomePage() {
         setIsProcessingChat(false);
       }
     },
-    [chatMessages, language, langConfig.synthesisCode, ingestTransactions, speak, backendOnline, addToast]
+    [chatMessages, language, ingestTransactions, speakReply, backendOnline, addToast]
   );
 
   // ---------------------------------------------------------------------------
   // Voice input
   // ---------------------------------------------------------------------------
   const handleVoiceFinal = useCallback(
-    async (transcript: string) => {
+    (transcript: string) => {
       if (!transcript.trim()) return;
-      await processMessage(transcript);
+      const normalized = normalizeTranscriptDraft(transcript, language);
+      setTextInput(normalized);
+      setShowTextInput(true);
+      setDraftSource("voice");
+      setTimeout(() => {
+        textInputRef.current?.focus();
+        textInputRef.current?.setSelectionRange(normalized.length, normalized.length);
+      }, 80);
+      addToast(
+        "info",
+        "Voice captured. Edit anything the microphone got wrong, then tap Send.",
+        5000
+      );
     },
-    [processMessage]
+    [addToast, language]
   );
 
   const handleVoiceError = useCallback(
@@ -339,9 +462,9 @@ export default function HomePage() {
         );
       }
 
-      speak(res.response, langConfig.synthesisCode);
+      speakReply(res.response);
     },
-    [ingestTransactions, speak, langConfig.synthesisCode, addToast]
+    [ingestTransactions, speakReply, addToast]
   );
 
   const handleImageError = useCallback(
@@ -368,6 +491,7 @@ export default function HomePage() {
       if (!textInput.trim() || isProcessingChat) return;
       const msg = textInput;
       setTextInput("");
+      setDraftSource(null);
       await processMessage(msg);
     },
     [textInput, isProcessingChat, processMessage]
@@ -386,10 +510,10 @@ export default function HomePage() {
   const isFullyOffline =
     healthState.checked && !healthState.backendReachable;
 
-  const isOllamaOnly =
+  const isProviderOffline =
     healthState.checked &&
     healthState.backendReachable &&
-    !healthState.ollamaReachable;
+    !healthState.providerReachable;
 
   if (isFullyOffline) {
     return (
@@ -401,7 +525,7 @@ export default function HomePage() {
     );
   }
 
-  if (isOllamaOnly) {
+  if (isProviderOffline) {
     return (
       <OllamaOfflineScreen
         isBackendDown={false}
@@ -449,8 +573,29 @@ export default function HomePage() {
               className={`h-2 w-2 rounded-full flex-shrink-0 transition-colors duration-500 ${
                 backendOnline ? "bg-primary-light" : "bg-warning animate-pulse"
               }`}
-              title={backendOnline ? "AI online" : "AI offline"}
+              title={
+                backendOnline
+                  ? "Ollama online"
+                  : "AI offline"
+              }
             />
+
+            <button
+              type="button"
+              onClick={() => setVoiceRepliesEnabled((v) => !v)}
+              className={`
+                h-8 w-8 rounded-full border flex items-center justify-center transition-colors
+                ${
+                  voiceRepliesEnabled
+                    ? "border-primary-900 bg-primary-surface text-primary-900"
+                    : "border-border text-text-secondary hover:border-text-secondary"
+                }
+              `}
+              title={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
+              aria-label={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
+            >
+              {voiceRepliesEnabled ? <SpeakerIcon /> : <MutedSpeakerIcon />}
+            </button>
 
             {/* Demo mode toggle */}
             <button
@@ -478,7 +623,7 @@ export default function HomePage() {
       {/* ------------------------------------------------------------------ */}
       <main
         className="zone-main flex-1 overflow-y-auto overscroll-contain"
-        style={{ paddingBottom: showTextInput || isDemoMode ? "220px" : "150px" }}
+        style={{ paddingBottom: showTextInput || isDemoMode ? "280px" : "180px" }}
       >
         <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-5">
@@ -513,6 +658,9 @@ export default function HomePage() {
                 alerts={inventoryAlerts}
                 summary={dailySummary}
                 backendOnline={backendOnline}
+                onExportLedger={handleExportLedger}
+                onBackupData={handleBackupData}
+                isExporting={exportState !== null}
               />
             </div>
           </div>
@@ -522,55 +670,65 @@ export default function HomePage() {
       {/* ------------------------------------------------------------------ */}
       {/* ZONE 3 — Bottom Action Bar                                         */}
       {/* ------------------------------------------------------------------ */}
-      <div className="zone-bottom bottom-bar flex-shrink-0 fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-border safe-bottom">
-        <div className="max-w-2xl mx-auto px-4 pt-3 pb-4 space-y-2">
+      <div className="zone-bottom bottom-bar flex-shrink-0 fixed bottom-6 left-0 right-0 z-30 pointer-events-none px-4">
+        <div className="max-w-2xl mx-auto pointer-events-auto bg-white/90 backdrop-blur-md border border-border shadow-card-hover rounded-[2.5rem] p-4 space-y-3">
 
           {/* Demo mode panel */}
           {isDemoMode && (
             <DemoMode
               onMessage={processMessage}
               onComplete={() => {
-                addToast("success", "Demo complete! Susu Books works offline with your voice.");
+                addToast("success", "Demo complete. You can now try your own transaction.");
               }}
             />
           )}
 
           {/* Text input */}
           {showTextInput && (
-            <form
-              onSubmit={handleTextSubmit}
-              className="text-input-expanded flex items-center gap-2"
-            >
-              <input
-                ref={textInputRef}
-                type="text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder={
-                  voiceSupported
-                    ? "Type your transaction…"
-                    : "Voice not supported — type here"
-                }
-                disabled={isProcessingChat}
-                className="
-                  flex-1 rounded-xl border border-border px-4 py-2.5 text-sm
-                  bg-background placeholder:text-text-disabled
-                  focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-transparent
-                  disabled:opacity-50
-                "
-              />
-              <button
-                type="submit"
-                disabled={!textInput.trim() || isProcessingChat}
-                className="btn-primary px-4 py-2.5"
+            <div className="space-y-2">
+              {draftSource === "voice" && (
+                <p className="text-xs text-text-secondary px-1">
+                  Voice draft ready. Edit anything the microphone got wrong, then tap Send.
+                </p>
+              )}
+              <form
+                onSubmit={handleTextSubmit}
+                className="text-input-expanded flex items-center gap-2"
               >
-                {isProcessingChat ? (
-                  <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin block" />
-                ) : (
-                  "Send"
-                )}
-              </button>
-            </form>
+                <input
+                  ref={textInputRef}
+                  type="text"
+                  value={textInput}
+                  onChange={(e) => {
+                    setTextInput(e.target.value);
+                    if (draftSource) setDraftSource(null);
+                  }}
+                  placeholder={
+                    voiceSupported
+                      ? "Type your transaction…"
+                      : "Voice not supported — type here"
+                  }
+                  disabled={isProcessingChat}
+                  className="
+                    flex-1 rounded-xl border border-border px-4 py-2.5 text-sm
+                    bg-background placeholder:text-text-disabled
+                    focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-transparent
+                    disabled:opacity-50
+                  "
+                />
+                <button
+                  type="submit"
+                  disabled={!textInput.trim() || isProcessingChat}
+                  className="btn-primary px-4 py-2.5"
+                >
+                  {isProcessingChat ? (
+                    <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin block" />
+                  ) : (
+                    "Send"
+                  )}
+                </button>
+              </form>
+            </div>
           )}
 
           {/* Main button row */}
@@ -723,6 +881,26 @@ function KeyboardIcon() {
       <line x1="14" y1="10" x2="14" y2="10" strokeWidth={3} strokeLinecap="round" />
       <line x1="18" y1="10" x2="18" y2="10" strokeWidth={3} strokeLinecap="round" />
       <line x1="6" y1="14" x2="18" y2="14" strokeWidth={3} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SpeakerIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+    </svg>
+  );
+}
+
+function MutedSpeakerIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
     </svg>
   );
 }

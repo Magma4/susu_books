@@ -1,0 +1,23 @@
+{
+  "purchase_confirmed": "Imeandikwa. {item} {quantity} {unit}, {currency} {total_amount}. Stoki: {new_stock_level} {unit}.",
+  "purchase_confirmed_with_supplier": "Imeandikwa. {item} {quantity} {unit} kutoka kwa {supplier}, {currency} {total_amount}. Stoki: {new_stock_level} {unit}.",
+  "sale_confirmed": "Imeandikwa. Umeuzwa {item} {quantity} {unit}, {currency} {total_amount}. Faida: {currency} {profit}. Stoki: {remaining_stock} {unit}.",
+  "sale_low_stock_warning": "Imeandikwa. Lakini {item} inakaribia kuisha — imebaki {remaining_stock} {unit} tu!",
+  "sale_out_of_stock": "Imeandikwa. Lakini {item} imeisha! Nunua tena haraka.",
+  "expense_confirmed": "Imeandikwa. {category}: {currency} {amount}. Jumla ya matumizi leo: {currency} {total_expenses_today}.",
+  "inventory_single": "{item}: {quantity} {unit} katika stoki. Bei: {currency} {avg_cost} kila moja.",
+  "inventory_low": "Onyo! {item}: imebaki {quantity} {unit} tu.",
+  "inventory_out": "{item} IMEISHA katika stoki!",
+  "inventory_all_header": "Bidhaa zako:",
+  "inventory_item_line": "  {item}: {quantity} {unit} ({status})",
+  "inventory_empty": "Bado huna bidhaa katika stoki.",
+  "daily_summary": "Leo: Mapato {currency} {total_revenue}, Gharama {currency} {total_cost}, Matumizi {currency} {total_expenses}. Faida: {currency} {net_profit}. Miamala {transaction_count}. Bidhaa bora: {top_selling_item}.",
+  "daily_summary_comparison_up": "Vizuri! Imezidi jana kwa {profit_change_pct}%!",
+  "daily_summary_comparison_down": "Jana ilikuwa bora kwa {profit_change_pct}%.",
+  "weekly_report": "Wiki hii: Faida jumla {currency} {total_profit}. Kila siku {currency} {avg_daily_profit}. Siku bora: {best_day}. Miamala {total_transactions}.",
+  "credit_profile": "Kwa siku {period_days} zilizopita: average daily revenue {currency} {avg_daily_revenue}, average daily profit {currency} {avg_daily_profit}, active days {active_days}, consistency score {consistency_score}. Risk level: {risk_level}.",
+  "clarify": "Sijasikia vizuri. Tafadhali sema tena.",
+  "photo_unclear": "Sikuweza kusoma transaction vizuri kutoka kwenye picha hiyo. Tafadhali jaribu tena.",
+  "error": "Kuna tatizo. Tafadhali jaribu tena.",
+  "welcome": "Karibu Susu Books! Bonyeza kitufe kijani na uniambie kuhusu biashara yako."
+}

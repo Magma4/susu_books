@@ -1,36 +1,42 @@
 """
 Susu Books - Ledger Service
 Core business logic for recording purchases, sales, and expenses.
-All functions are async and receive an SQLAlchemy AsyncSession.
 """
 
+from __future__ import annotations
+
 import logging
-from datetime import datetime, date
+from datetime import UTC, date, datetime
 from typing import Optional
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
-from models import Transaction, Inventory
+from models import Transaction
 from schemas import (
-    RecordPurchaseArgs, RecordSaleArgs, RecordExpenseArgs,
-    TransactionType, TransactionSource,
+    RecordExpenseArgs,
+    RecordPurchaseArgs,
+    RecordSaleArgs,
+    TransactionSource,
+    TransactionType,
+    normalize_item_name,
+    normalize_unit_name,
 )
 from services.inventory_service import InventoryService
 
 logger = logging.getLogger(__name__)
 
 
+def utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class LedgerService:
-    """Handles creation of all transaction types and triggers inventory updates."""
+    """Creates transactions and keeps inventory synchronized."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.inventory_svc = InventoryService(db)
-
-    # ------------------------------------------------------------------
-    # Record Purchase
-    # ------------------------------------------------------------------
+        self.inventory = InventoryService(db)
 
     async def record_purchase(
         self,
@@ -39,68 +45,50 @@ class LedgerService:
         source: TransactionSource = TransactionSource.voice,
         raw_input: Optional[str] = None,
         confidence: float = 1.0,
-    ) -> dict:
-        """
-        Records a stock purchase transaction and updates inventory.
-
-        Returns a dict with:
-          - transaction_id
-          - item, quantity, unit, unit_price, total_amount, currency
-          - new_stock_level
-          - new_avg_cost
-          - supplier
-        """
-        total_amount = args.quantity * args.unit_price
+    ) -> dict[str, object]:
+        item = normalize_item_name(args.item)
+        unit = normalize_unit_name(args.unit)
+        total_amount = round(args.quantity * args.unit_price, 2)
 
         transaction = Transaction(
             type=TransactionType.purchase,
-            item=args.item.strip().lower(),
+            item=item,
             quantity=args.quantity,
-            unit=args.unit,
+            unit=unit,
             unit_price=args.unit_price,
             total_amount=total_amount,
             currency=args.currency,
             counterparty=args.supplier,
+            category=None,
             notes=args.notes,
             source=source,
             language=language,
             raw_input=raw_input,
             confidence=confidence,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         self.db.add(transaction)
-        await self.db.flush()  # get the transaction.id without committing
+        await self.db.flush()
 
-        # Update inventory
-        inv = await self.inventory_svc.add_stock(
-            item=args.item.strip().lower(),
+        inventory = await self.inventory.add_stock(
+            item=item,
             quantity=args.quantity,
-            unit=args.unit,
+            unit=unit,
             purchase_price=args.unit_price,
-        )
-
-        logger.info(
-            "Purchase recorded: %s x%.2f %s @ %s %.2f each (tx#%d)",
-            args.item, args.quantity, args.unit, args.currency, args.unit_price, transaction.id
         )
 
         return {
             "transaction_id": transaction.id,
-            "item": args.item,
+            "item": item,
             "quantity": args.quantity,
-            "unit": args.unit,
+            "unit": unit,
             "unit_price": args.unit_price,
             "total_amount": total_amount,
             "currency": args.currency,
             "supplier": args.supplier,
-            "new_stock_level": inv.quantity,
-            "new_avg_cost": inv.avg_cost,
+            "new_stock_level": round(inventory.quantity, 2),
         }
-
-    # ------------------------------------------------------------------
-    # Record Sale
-    # ------------------------------------------------------------------
 
     async def record_sale(
         self,
@@ -109,72 +97,56 @@ class LedgerService:
         source: TransactionSource = TransactionSource.voice,
         raw_input: Optional[str] = None,
         confidence: float = 1.0,
-    ) -> dict:
-        """
-        Records a sale transaction and decrements inventory.
-
-        Returns a dict with:
-          - transaction_id
-          - item, quantity, unit, sale_price, total_revenue, currency
-          - profit_on_sale (revenue minus cost basis)
-          - remaining_stock
-          - low_stock_warning (bool)
-          - customer
-        """
-        total_revenue = args.quantity * args.sale_price
+    ) -> dict[str, object]:
+        item = normalize_item_name(args.item)
+        unit = normalize_unit_name(args.unit)
+        total_amount = round(args.quantity * args.sale_price, 2)
 
         transaction = Transaction(
             type=TransactionType.sale,
-            item=args.item.strip().lower(),
+            item=item,
             quantity=args.quantity,
-            unit=args.unit,
+            unit=unit,
             unit_price=args.sale_price,
-            total_amount=total_revenue,
+            total_amount=total_amount,
             currency=args.currency,
             counterparty=args.customer,
+            category=None,
             notes=args.notes,
             source=source,
             language=language,
             raw_input=raw_input,
             confidence=confidence,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         self.db.add(transaction)
         await self.db.flush()
 
-        # Decrement stock; get result including cost basis for profit calc
-        inv, profit_on_sale = await self.inventory_svc.remove_stock(
-            item=args.item.strip().lower(),
+        inventory, profit = await self.inventory.remove_stock(
+            item=item,
             quantity=args.quantity,
             sale_price=args.sale_price,
+            unit=unit,
         )
 
-        low_stock_warning = inv.quantity <= inv.low_stock_threshold
-
-        logger.info(
-            "Sale recorded: %s x%.2f %s @ %s %.2f each (tx#%d). Profit: %.2f. Remaining: %.2f",
-            args.item, args.quantity, args.unit, args.currency,
-            args.sale_price, transaction.id, profit_on_sale, inv.quantity
-        )
+        low_stock_warning = inventory.quantity <= inventory.low_stock_threshold
+        out_of_stock = inventory.quantity <= 0
 
         return {
             "transaction_id": transaction.id,
-            "item": args.item,
+            "item": item,
             "quantity": args.quantity,
-            "unit": args.unit,
+            "unit": unit,
             "sale_price": args.sale_price,
-            "total_revenue": total_revenue,
+            "total_amount": total_amount,
             "currency": args.currency,
             "customer": args.customer,
-            "profit_on_sale": round(profit_on_sale, 2),
-            "remaining_stock": inv.quantity,
+            "profit": profit,
+            "remaining_stock": round(inventory.quantity, 2),
             "low_stock_warning": low_stock_warning,
+            "out_of_stock": out_of_stock,
         }
-
-    # ------------------------------------------------------------------
-    # Record Expense
-    # ------------------------------------------------------------------
 
     async def record_expense(
         self,
@@ -183,15 +155,9 @@ class LedgerService:
         source: TransactionSource = TransactionSource.voice,
         raw_input: Optional[str] = None,
         confidence: float = 1.0,
-    ) -> dict:
-        """
-        Records a non-inventory expense (transport, rent, utilities, staff, etc.).
+    ) -> dict[str, object]:
+        category = args.category.value if hasattr(args.category, "value") else str(args.category)
 
-        Returns a dict with:
-          - transaction_id
-          - category, description, amount, currency
-          - total_expenses_today
-        """
         transaction = Transaction(
             type=TransactionType.expense,
             item=args.description,
@@ -200,65 +166,57 @@ class LedgerService:
             unit_price=None,
             total_amount=args.amount,
             currency=args.currency,
-            category=args.category,
+            counterparty=None,
+            category=category,
             notes=args.notes,
             source=source,
             language=language,
             raw_input=raw_input,
             confidence=confidence,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         self.db.add(transaction)
         await self.db.flush()
 
-        # Sum today's expenses
-        today = date.today()
-        today_start = datetime(today.year, today.month, today.day)
+        today_start = datetime.combine(date.today(), datetime.min.time())
         result = await self.db.execute(
             select(func.sum(Transaction.total_amount))
             .where(Transaction.type == TransactionType.expense)
             .where(Transaction.created_at >= today_start)
         )
-        total_expenses_today = result.scalar_one_or_none() or 0.0
-
-        logger.info(
-            "Expense recorded: %s - %s %.2f %s (tx#%d)",
-            args.category, args.currency, args.amount, args.description, transaction.id
-        )
+        total_expenses_today = float(result.scalar_one_or_none() or 0.0)
 
         return {
             "transaction_id": transaction.id,
-            "category": args.category,
-            "description": args.description,
-            "amount": args.amount,
+            "category": category,
+            "amount": round(args.amount, 2),
             "currency": args.currency,
+            "description": args.description,
             "total_expenses_today": round(total_expenses_today, 2),
         }
-
-    # ------------------------------------------------------------------
-    # Query helpers
-    # ------------------------------------------------------------------
 
     async def get_transactions(
         self,
         *,
         transaction_date: Optional[date] = None,
         transaction_type: Optional[str] = None,
-        limit: int = 50,
+        limit: Optional[int] = 50,
         offset: int = 0,
     ) -> list[Transaction]:
-        """Fetch transactions with optional date and type filters."""
-        query = select(Transaction).order_by(Transaction.created_at.desc())
+        query = select(Transaction).order_by(Transaction.created_at.desc(), Transaction.id.desc())
 
         if transaction_date:
-            start = datetime(transaction_date.year, transaction_date.month, transaction_date.day)
-            end = datetime(transaction_date.year, transaction_date.month, transaction_date.day, 23, 59, 59)
-            query = query.where(Transaction.created_at >= start).where(Transaction.created_at <= end)
+            start = datetime.combine(transaction_date, datetime.min.time())
+            end = datetime.combine(transaction_date, datetime.max.time())
+            query = query.where(Transaction.created_at >= start, Transaction.created_at <= end)
 
         if transaction_type:
             query = query.where(Transaction.type == transaction_type)
 
-        query = query.limit(limit).offset(offset)
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())

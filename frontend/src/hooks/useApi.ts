@@ -99,7 +99,11 @@ export function useApi(): UseApiReturn {
   const fetchTransactions = useCallback(async () => {
     try {
       const txns = await api.getTransactions({ limit: 100 });
-      safeSet((prev) => ({ ...prev, transactions: txns }));
+      safeSet((prev) => {
+        const errors = { ...prev.errors };
+        delete errors.transactions;
+        return { ...prev, transactions: txns, errors };
+      });
     } catch (e) {
       setError("transactions", String(e));
     }
@@ -111,7 +115,11 @@ export function useApi(): UseApiReturn {
         api.getInventory(),
         api.getInventoryAlerts(),
       ]);
-      safeSet((prev) => ({ ...prev, inventory: inv, inventoryAlerts: alerts }));
+      safeSet((prev) => {
+        const errors = { ...prev.errors };
+        delete errors.inventory;
+        return { ...prev, inventory: inv, inventoryAlerts: alerts, errors };
+      });
     } catch (e) {
       setError("inventory", String(e));
     }
@@ -120,7 +128,11 @@ export function useApi(): UseApiReturn {
   const fetchDailySummary = useCallback(async () => {
     try {
       const summary = await api.getDailySummary();
-      safeSet((prev) => ({ ...prev, dailySummary: summary }));
+      safeSet((prev) => {
+        const errors = { ...prev.errors };
+        delete errors.dailySummary;
+        return { ...prev, dailySummary: summary, errors };
+      });
     } catch (e) {
       setError("dailySummary", String(e));
     }
@@ -129,7 +141,11 @@ export function useApi(): UseApiReturn {
   const fetchWeeklyReport = useCallback(async () => {
     try {
       const report = await api.getWeeklyReport();
-      safeSet((prev) => ({ ...prev, weeklyReport: report }));
+      safeSet((prev) => {
+        const errors = { ...prev.errors };
+        delete errors.weeklyReport;
+        return { ...prev, weeklyReport: report, errors };
+      });
     } catch (e) {
       setError("weeklyReport", String(e));
     }
@@ -191,7 +207,7 @@ export function useApi(): UseApiReturn {
         };
       });
       // Refresh summary after a brief delay (backend needs to commit first)
-      setTimeout(() => {
+      window.setTimeout(() => {
         fetchDailySummary();
         fetchInventory();
       }, 500);

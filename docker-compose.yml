@@ -17,18 +17,31 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - DATABASE_URL=sqlite:////data/susu_books.db
-      - DB_ECHO=false
-      - DEBUG=false
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4:31b-instruct}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-300}
+      DATABASE_URL: sqlite:////data/susu_books.db
+      DB_ECHO: "false"
+      DEBUG: "false"
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      SECURITY_HEADERS_ENABLED: ${SECURITY_HEADERS_ENABLED:-true}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      EXPORT_MAX_ROWS: ${EXPORT_MAX_ROWS:-5000}
+      CHAT_RATE_LIMIT_REQUESTS: ${CHAT_RATE_LIMIT_REQUESTS:-60}
+      CHAT_RATE_LIMIT_WINDOW_SECONDS: ${CHAT_RATE_LIMIT_WINDOW_SECONDS:-60}
     volumes:
       # Persist SQLite database on the host
       - susu-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
     extra_hosts:
       # On Linux, allow containers to reach host services
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -44,12 +57,16 @@ services:
       dockerfile: Dockerfile
       args:
         # Browser talks directly to the backend via host port mapping
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     container_name: susu-frontend
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       backend:
         condition: service_healthy

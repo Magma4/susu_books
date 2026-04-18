@@ -1,77 +1,75 @@
-# Susu Books: An Offline Voice-First AI Ledger for the Informal Economy
+# Susu Books: Offline Voice-First Bookkeeping for the Informal Economy
 
-## The Problem: 2.1 Billion People Invisible to Finance
+## Problem
 
-Two billion people worldwide work in the informal economy — selling vegetables at dawn markets, running roadside stalls, tending small farms. In Ghana alone, the informal sector accounts for roughly 80% of employment. These workers are industrious, resourceful, and financially active. They buy stock, sell goods, track debts, and mentally calculate margins across dozens of transactions every day.
+Informal economy workers run real businesses, but most of their financial history never gets recorded. A market trader may buy stock at dawn, sell all day, pay transport and market fees, and still end the day with no reliable record of revenue, costs, or profit. That missing history blocks better pricing, better restocking decisions, and access to credit. The issue is not that existing users do not want bookkeeping. It is that most bookkeeping tools assume literacy, time, stable internet, and comfort with English-language forms.
 
-Yet almost none of this economic activity is recorded.
+Susu Books starts from a different assumption: the easiest way to record a business transaction is to say it out loud.
 
-The consequences are severe. Without a transaction history, informal workers cannot access credit. Without credit, they cannot grow. A market woman who sells ₵5,000 of goods per week — and has done so for ten years — may still be refused a mobile-money loan because she has no documented revenue. The data exists in her head. It just isn't written down.
+## Solution
 
-The barriers are not laziness or ignorance. They are practical: paper ledgers take time, require literacy and numeracy, and are lost in rain or fire. Smartphone apps assume comfort with touchscreens and English-language interfaces. Accounting software assumes an accountant. None of these tools fit into the life of someone who is simultaneously managing customers, handling cash, and watching their stall.
+Susu Books is an offline, voice-first AI business copilot for market women, street vendors, and smallholder farmers. A user taps one large button and says something natural like:
 
-## The Solution: Speak Your Business
+- `I bought 10 bags of rice from Kofi for 120 cedis each`
+- `Sold 3 bags of rice at 180 to Maame`
+- `Transport to market today cost 15 cedis`
 
-Susu Books is built on a single insight: **the most natural interface for recording a transaction is describing it out loud**, exactly as you would to a family member helping with the books.
+The system extracts structured data, updates the ledger, adjusts inventory, computes profit, and speaks back a short confirmation in the user’s selected language. Users can also upload photographs of receipts, handwritten notes, and product labels for image-based extraction.
 
-> *"I bought 10 bags of rice from Kofi for 120 cedis each."*
-> *"Sold 3 bags of rice at 180 to Maame."*
-> *"Transport to market today cost 15 cedis."*
+Everything runs locally: Gemma 4 through Ollama, a FastAPI backend, and a SQLite database. There are no cloud dependencies in the core product flow.
 
-That's it. Tap once, speak naturally in English, Twi, Hausa, Pidgin, or Swahili, and Susu Books handles the rest — parsing the transaction, updating inventory, calculating profit, and storing everything locally with no internet required.
+## Hybrid Multilingual Design
 
-The name comes from *susu* (also spelled *esusu* or *asusu* depending on the language family) — a rotating savings collective practiced across West and Central Africa. Groups of traders pool money, each member taking turns receiving the full pot. Susu is built on radical trust and careful accounting. Susu Books is the digital extension of that tradition.
+During development, we discovered that Gemma 4's text generation quality in low-resource languages like Twi and Hausa is unreliable — grammatically incorrect outputs would erode trust with the exact users we're trying to serve. Rather than shipping broken multilingual generation, we designed a hybrid architecture: Gemma 4's multilingual understanding capabilities extract structured transaction data from speech in any language, while human-verified response templates guarantee grammatically correct, culturally appropriate output. This approach is more honest, more reliable, and more respectful of the languages we serve. It also makes the system trivially extensible — adding a new language requires only a new JSON template file verified by a native speaker, not retraining a model.
+
+That decision shaped the whole product. Gemma 4 is responsible for understanding the input and returning function calls only. The backend is responsible for business logic and persistence. The final user-facing sentence comes from deterministic templates in English, Twi, Hausa, Nigerian Pidgin, and Swahili. This gives us the multilingual reach of Gemma’s understanding without pretending the model is a polished writer in every market language.
 
 ## Technical Architecture
 
-The system has three layers, all designed to work entirely offline after a one-time setup.
+The system has three layers.
 
-**AI Layer — Gemma 4 via Ollama**: The core intelligence is Google's Gemma 4 model (31B-instruct, or the lighter 26B MoE variant) running locally through Ollama. Gemma 4's 128K context window lets the system maintain a full conversation history across dozens of exchanges in a single session. Its native multimodal capability enables receipt photograph processing — a user can photograph a handwritten receipt or a cardboard stock count, and Gemma 4 extracts every line item.
+**Frontend:** A Next.js 14 application provides a three-zone dashboard: live ledger feed, alerts and summaries, and a large voice-and-camera action area. The interface is intentionally simple, mobile-first, and low-text. Voice input uses the browser Web Speech API. Voice output uses SpeechSynthesis when the device has a usable local voice and falls back cleanly when it does not.
 
-**Backend — FastAPI + SQLite**: A Python FastAPI server manages the AI orchestration loop, business logic, and data persistence. When Gemma 4 decides to record a transaction, it emits a structured tool call. The backend executes the corresponding function (one of seven: `record_purchase`, `record_sale`, `record_expense`, `check_inventory`, `daily_summary`, `weekly_report`, `export_credit_profile`), feeds the result back to Gemma 4, and lets the model compose a natural-language confirmation in the user's language. Inventory uses weighted-average-cost accounting — the same method taught in business schools, applied to a market stall.
+**Backend:** FastAPI exposes `POST /api/chat`, `POST /api/chat/image`, reporting endpoints, inventory endpoints, and transaction CRUD. SQLAlchemy writes to SQLite, which runs in WAL mode with a busy timeout to reduce lock contention during UI polling. Business logic is split into services for ledger operations, inventory tracking, reporting, Gemma orchestration, and template rendering.
 
-**Frontend — Next.js 14 + Web Speech API**: The interface is a mobile-first single-page application designed for a 375px screen. The voice button is the largest interactive element on screen — intentionally. A state machine (idle → listening → processing → done) provides clear feedback at every step. When the microphone is unavailable or denied, the app surfaces a text input automatically. For the camera flow, the native `capture="environment"` attribute opens the back camera directly without a file picker.
+**AI Layer:** Gemma 4 runs locally through Ollama. The backend sends a strict system prompt plus eight tool definitions: `record_purchase`, `record_sale`, `record_expense`, `check_inventory`, `daily_summary`, `weekly_report`, `export_credit_profile`, and `clarify_input`. Gemma 4 never returns free-form answers in the production flow. It returns function calls, and the backend executes them.
 
-The entire stack runs in Docker, with a one-command setup script that checks for Ollama, pulls the model if needed, seeds demo data, and starts both services. For field deployments on low-powered hardware, the Python backend can run without Docker on any machine with Python 3.11.
+The image flow works similarly. An uploaded receipt or handwritten note is sent to Gemma 4 as an image plus prompt, Gemma emits tool calls for extracted transactions, and the backend executes them just like spoken input.
 
-## Why Gemma 4 Specifically
+## Why Gemma 4
 
-Three properties of Gemma 4 made it the right choice for this problem.
+Gemma 4 fits this problem for three reasons.
 
-**Multilingual capability without fine-tuning.** West African traders frequently code-switch mid-sentence — "I sold the rice, the price was fine, but the trotro fare expensive pass" mixes English and Pidgin naturally. Gemma 4 handles this without a specialized multilingual model or language detection preprocessing. In testing, it correctly parsed transactions containing Twi numerals embedded in English sentences.
+First, it has strong multilingual understanding. Informal market speech is messy in exactly the way normal life is messy: users code-switch, drop units, mix local terms with English, and describe totals indirectly. Gemma 4 is good at interpreting that kind of intent, especially when paired with tool calling and domain-specific instructions.
 
-**Structured output via tool calling.** Extracting a transaction from natural speech requires converting fuzzy natural language into precise structured fields: item name, quantity, unit, unit price, total, counterparty, transaction type. Gemma 4's tool-calling format provides exactly this bridge — the model decides when to call a function and fills the arguments from context, rather than requiring a rule-based NLP pipeline that would break on unusual phrasing.
+Second, tool calling is the right abstraction for bookkeeping. The task is not open-ended conversation. The task is turning speech into structured actions with fields like item, quantity, unit price, total amount, counterparty, and category. Tool calling gives us a clean bridge from natural language to deterministic ledger updates.
 
-**Efficient MoE architecture.** The `gemma4:26b-a4b-instruct` variant uses a mixture-of-experts design where only 4 billion parameters are active per inference. This makes it plausible to run on consumer hardware — a laptop with 16GB of unified memory, or a dedicated mini-PC at a cooperative's office serving multiple stalls on a local network. The full 31B dense model provides higher accuracy when hardware allows.
+Third, Gemma 4 can run locally through Ollama. That matters because this product is designed for unreliable connectivity, privacy-sensitive users, and environments where data costs matter. A bookkeeping assistant that fails whenever the network drops is not a serious tool for the people we are building for.
 
-## Challenges and Design Decisions
+## Real Utility
 
-**The zero-literacy constraint.** Early prototypes showed all the standard UI patterns — forms, dropdowns, confirmation dialogs. These were removed. The final design has three interactive elements in the main flow: the voice button, the camera button, and the language selector. Everything else is read-only display. The assumption is that a user who can operate a mobile phone can tap a large button and speak.
+Susu Books is not just a transcription demo. It maintains live inventory with weighted-average-cost accounting, flags low stock, computes daily and weekly performance, and exports a lender-friendly credit profile. That last feature matters because a consistent transaction history can become proof of business activity for microfinance or mobile-money lending workflows.
 
-**Offline-first architecture.** The temptation to use a cloud API is real — it would make the system more capable and the demo more impressive. We explicitly chose not to. A market woman in a peri-urban neighborhood may have 2G connectivity, intermittent power, and a data budget measured in megabytes. Any system that requires a network call to process a transaction will fail her at exactly the moments she needs it most. The Gemma 4 model downloads once and runs forever.
+For the hackathon demo, the repository includes:
 
-**Trust and data ownership.** Informal economy workers have good reasons to distrust systems that capture their financial data and send it to unknown servers. Susu Books stores everything on the device running the application. There is no account creation, no sync, no telemetry. The credit profile export feature exists specifically so the user controls what data leaves their device and when.
+- Docker Compose for backend and frontend integration
+- a one-command `setup.sh` that checks Ollama, chooses the best available Gemma 4 model, seeds demo data, and starts the app
+- a 14-day seed dataset for Ama, an Accra trader, with realistic purchases, sales, expenses, low-stock alerts, and cached summaries
+- an Unsloth LoRA pipeline that generates synthetic multilingual training data, benchmarks extraction accuracy, and exports a GGUF model back into Ollama
+- a demo mode and a separate three-minute video script
 
-**The cold-start problem.** A new user has no transaction history, so the dashboard is empty and the AI has no context. The seed script generates 14 days of realistic data for demo purposes. For real onboarding, the weekly report query ("how did I do this week?") produces a meaningful response after just a few recorded transactions, giving new users an immediate sense of value.
+This makes the project easy to judge as a real working system rather than a slideware concept.
 
-## Impact Thesis
+## Key Design Decisions
 
-The immediate output of Susu Books is a transaction ledger. The downstream outcomes extend further.
+The first design constraint was low literacy. We removed form-heavy patterns and made voice the default path. The second was offline reliability. We avoided cloud APIs entirely in the main loop. The third was trust. Every trader-facing reply must be short, predictable, and grammatically correct in the chosen language. That is why templates are such a central part of the architecture rather than a cosmetic add-on.
 
-A recorded transaction history is the foundation of financial inclusion. Mobile money providers, microfinance institutions, and fintech lenders increasingly use alternative data to underwrite informal economy borrowers. A 90-day transaction history showing consistent revenue and positive margins is the kind of signal that unlocks a working-capital loan — the kind of loan that lets Ama buy a full pallet of rice at wholesale rather than ten bags at a time.
+We also treated failure modes seriously. The backend returns structured validation and server errors, rejects unsupported image uploads, and keeps audit fields like `raw_input`, `language`, and `confidence` for transparency. The frontend degrades gracefully when speech recognition or speech synthesis support is weak on a given device.
 
-Beyond credit access, there are operational benefits that compound over time: understanding which items have the highest margins, recognizing seasonal patterns, identifying which customers are reliably profitable. These are insights that formal businesses take for granted and informal businesses currently have to carry in memory.
+## Impact
 
-The multilingual, offline design also means the tool can spread through peer networks — one trader teaches another, the same way susu groups themselves spread. There is no onboarding fee, no monthly subscription, no requirement to have a bank account before you can start.
+The immediate outcome is better bookkeeping. The longer-term outcome is visibility. A trader with ninety days of consistent records has something powerful: evidence. Evidence of revenue, evidence of margin, evidence of business discipline. That can unlock better restocking decisions, better cash planning, and eventually access to working capital.
 
-## Track and Evaluation Criteria
+Susu Books fits the Digital Equity and Inclusivity spirit of the hackathon because it does not ask users to adapt to formal software norms. Instead, it adapts AI to the way informal businesses already work: local language, spoken workflow, low bandwidth, and practical trust.
 
-This submission is entered under the **Social Good** track of the Gemma 4 Good Hackathon.
-
-The project demonstrates impact through direct utility: a working application that a real market trader can install and use today. The technical implementation showcases Gemma 4's function-calling capability in a production-ready architecture, its multimodal OCR on document photographs, and its multilingual comprehension across five languages. The offline-first design makes the social impact claim credible rather than theoretical — the system works in conditions where cloud-based alternatives would not.
-
-Gemma 4 is not a prop in this project. It is the core mechanism by which natural spoken language becomes structured financial data. Without the model's ability to parse intent, extract fields, and confirm in natural language, the entire user experience collapses into a conventional form. With it, bookkeeping becomes as easy as talking to a friend.
-
----
-
-*Susu Books — because every transaction deserves to be remembered.*
+Gemma 4 is central to that value. It is the multilingual extraction engine that turns everyday speech into structured economic memory.

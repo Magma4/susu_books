@@ -71,7 +71,7 @@ export default function TransactionFeed({
                 <TypePill count={purchasesCount} label="buys" colorClass="bg-accent-light text-accent-800" />
               )}
               {expensesCount > 0 && (
-                <TypePill count={expensesCount} label="exp" colorClass="bg-red-50 text-danger" />
+                <TypePill count={expensesCount} label="expenses" colorClass="bg-red-50 text-danger" />
               )}
             </div>
           )}

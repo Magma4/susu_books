@@ -8,7 +8,7 @@ from typing import Optional
 
 from sqlalchemy import (
     Integer, Float, String, Text, DateTime, Date, Boolean,
-    func, UniqueConstraint,
+    CheckConstraint, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,10 @@ class Transaction(Base):
     Represents a single financial event: purchase, sale, or expense.
     """
     __tablename__ = "transactions"
+    __table_args__ = (
+        CheckConstraint("type IN ('purchase', 'sale', 'expense')", name="ck_transactions_type"),
+        CheckConstraint("source IN ('voice', 'photo', 'manual')", name="ck_transactions_source"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
@@ -97,11 +101,15 @@ class Inventory(Base):
     # Cost tracking
     avg_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     last_purchase_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    last_sale_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Alerting
     low_stock_threshold: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
     is_low_stock: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -114,8 +122,10 @@ class Inventory(Base):
             "unit": self.unit,
             "avg_cost": self.avg_cost,
             "last_purchase_price": self.last_purchase_price,
+            "last_sale_price": self.last_sale_price,
             "low_stock_threshold": self.low_stock_threshold,
             "is_low_stock": self.is_low_stock,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
@@ -136,6 +146,7 @@ class DailySummary(Base):
     net_profit: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     transaction_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     top_selling_item: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    top_selling_quantity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     generated_at: Mapped[datetime] = mapped_column(
         DateTime, default=func.now(), nullable=False
@@ -151,5 +162,6 @@ class DailySummary(Base):
             "net_profit": self.net_profit,
             "transaction_count": self.transaction_count,
             "top_selling_item": self.top_selling_item,
+            "top_selling_quantity": self.top_selling_quantity,
             "generated_at": self.generated_at.isoformat() if self.generated_at else None,
         }

@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Python
+backend/.venv/
+backend/.env
+backend/__pycache__/
+backend/routers/__pycache__/
+backend/services/__pycache__/
+backend/susu_books.db
+backend/susu_books.db-shm
+backend/susu_books.db-wal
+*.pyc
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+
+# Local environments
+susEnv/
+
+# Fine-tuning artifacts
+training/runs/
+training/exports/

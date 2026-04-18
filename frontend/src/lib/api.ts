@@ -19,35 +19,74 @@ const BASE_URL =
     ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
     : "http://localhost:8000";
 
+const DEFAULT_TIMEOUT_MS = 15_000;
+const CHAT_TIMEOUT_MS = 180_000;
+
+function buildUrl(path: string): string {
+  return `${BASE_URL}${path}`;
+}
+
+function extractErrorDetail(body: unknown, fallback: string): string {
+  if (!body || typeof body !== "object") return fallback;
+  if ("detail" in body && typeof body.detail === "string") return body.detail;
+  if ("error" in body && typeof body.error === "string") return body.error;
+  return fallback;
+}
+
+async function parseErrorResponse(res: Response, path: string): Promise<never> {
+  let detail = `HTTP ${res.status}`;
+  try {
+    const body = await res.json();
+    detail = extractErrorDetail(body, detail);
+  } catch {
+    // ignore JSON parse errors
+  }
+  throw new ApiError(res.status, detail, path);
+}
+
+function withTimeout(timeoutMs: number): { controller: AbortController; cleanup: () => void } {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    controller,
+    cleanup: () => clearTimeout(timeout),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Core fetch helper
 // ---------------------------------------------------------------------------
 
 async function request<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit & { timeoutMs?: number } = {}
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers as Record<string, string>),
-    },
-    ...options,
-  });
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, headers, ...rest } = options;
+  const { controller, cleanup } = withTimeout(timeoutMs);
 
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = await res.json();
-      detail = body.detail ?? detail;
-    } catch {
-      // ignore JSON parse error
+  try {
+    const res = await fetch(buildUrl(path), {
+      headers: {
+        "Content-Type": "application/json",
+        ...(headers as Record<string, string>),
+      },
+      signal: controller.signal,
+      ...rest,
+    });
+
+    if (!res.ok) {
+      return await parseErrorResponse(res, path);
     }
-    throw new ApiError(res.status, detail, path);
-  }
 
-  return res.json() as Promise<T>;
+    return res.json() as Promise<T>;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(408, "The request took too long. Please try again.", path);
+    }
+    throw error;
+  } finally {
+    cleanup();
+  }
 }
 
 export class ApiError extends Error {
@@ -78,6 +117,7 @@ export async function sendChat(
   return request<ChatResponse>("/api/chat", {
     method: "POST",
     body: JSON.stringify({ message, language, conversation_history: conversationHistory }),
+    timeoutMs: CHAT_TIMEOUT_MS,
   });
 }
 
@@ -91,21 +131,28 @@ export async function sendImageChat(
   form.append("message", message);
   form.append("language", language);
 
-  const url = `${BASE_URL}/api/chat/image`;
-  const res = await fetch(url, { method: "POST", body: form });
+  const { controller, cleanup } = withTimeout(CHAT_TIMEOUT_MS);
 
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = await res.json();
-      detail = body.detail ?? detail;
-    } catch {
-      // ignore
+  try {
+    const res = await fetch(buildUrl("/api/chat/image"), {
+      method: "POST",
+      body: form,
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      return await parseErrorResponse(res, "/api/chat/image");
     }
-    throw new ApiError(res.status, detail, "/api/chat/image");
-  }
 
-  return res.json() as Promise<ImageChatResponse>;
+    return res.json() as Promise<ImageChatResponse>;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(408, "Image analysis took too long. Please try again.", "/api/chat/image");
+    }
+    throw error;
+  } finally {
+    cleanup();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -162,12 +209,81 @@ export interface HealthStatus {
   status: "ok" | "degraded";
   database: "ok" | "error";
   ollama_reachable: boolean;
+  provider_reachable?: boolean;
   model_loaded: boolean;
   available_models?: string[];
   target_model: string;
+  ai_provider?: "ollama";
   error?: string;
 }
 
 export async function getHealth(): Promise<HealthStatus> {
-  return request<HealthStatus>("/api/health");
+  return request<HealthStatus>("/api/health", { timeoutMs: 8_000 });
+}
+
+// ---------------------------------------------------------------------------
+// Export / Backup
+// ---------------------------------------------------------------------------
+
+function getFilenameFromDisposition(contentDisposition: string | null, fallback: string): string {
+  if (!contentDisposition) return fallback;
+  const match = /filename="?([^"]+)"?/.exec(contentDisposition);
+  return match?.[1] ?? fallback;
+}
+
+async function downloadFile(
+  path: string,
+  fallbackFilename: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+): Promise<string> {
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...rest } = options;
+  const { controller, cleanup } = withTimeout(timeoutMs);
+
+  try {
+    const res = await fetch(buildUrl(path), {
+      signal: controller.signal,
+      ...rest,
+    });
+    if (!res.ok) {
+      return await parseErrorResponse(res, path);
+    }
+
+    const blob = await res.blob();
+    const filename = getFilenameFromDisposition(
+      res.headers.get("Content-Disposition"),
+      fallbackFilename
+    );
+    const objectUrl = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(objectUrl);
+    return filename;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(408, "The export took too long. Please try again.", path);
+    }
+    throw error;
+  } finally {
+    cleanup();
+  }
+}
+
+export async function downloadTransactionsCsv(): Promise<string> {
+  return downloadFile(
+    "/api/export/transactions.csv",
+    "susu-books-transactions.csv",
+    { timeoutMs: 30_000 }
+  );
+}
+
+export async function downloadBackupJson(includeAuditTrail = false): Promise<string> {
+  return downloadFile(
+    `/api/export/backup.json?include_audit_trail=${includeAuditTrail ? "true" : "false"}`,
+    "susu-books-backup.json",
+    { timeoutMs: 30_000 }
+  );
 }

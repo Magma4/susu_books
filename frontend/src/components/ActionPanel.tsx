@@ -5,18 +5,25 @@
  */
 
 import type { InventoryAlerts, DailySummaryData } from "@/lib/types";
+import { formatItemLabel, formatUnitLabel } from "@/lib/display";
 import { formatAmount } from "@/styles/theme";
 
 interface ActionPanelProps {
   alerts: InventoryAlerts | null;
   summary: DailySummaryData | null;
   backendOnline: boolean;
+  onExportLedger: () => void;
+  onBackupData: () => void;
+  isExporting?: boolean;
 }
 
 export default function ActionPanel({
   alerts,
   summary,
   backendOnline,
+  onExportLedger,
+  onBackupData,
+  isExporting = false,
 }: ActionPanelProps) {
   const hasAlerts =
     (alerts?.low_stock_count ?? 0) > 0 ||
@@ -43,7 +50,7 @@ export default function ActionPanel({
             type="error"
             icon="⚡"
             title="AI offline"
-            message="Cannot reach the backend. Make sure Ollama is running on port 8000."
+            message="The AI service is unavailable. Check the backend and the configured Gemma provider."
           />
         )}
 
@@ -53,7 +60,7 @@ export default function ActionPanel({
             key={item.item}
             type="error"
             icon="📦"
-            title={`${item.item} — out of stock`}
+            title={`${formatItemLabel(item.item)} — out of stock`}
             message="Restock immediately to avoid missing sales."
           />
         ))}
@@ -64,8 +71,8 @@ export default function ActionPanel({
             key={item.item}
             type="warning"
             icon="⚠️"
-            title={`${item.item} — low stock`}
-            message={`${item.quantity} ${item.unit ?? "units"} left (threshold: ${item.threshold}).`}
+            title={`${formatItemLabel(item.item)} — low stock`}
+            message={`${item.quantity} ${item.unit ? formatUnitLabel(item.unit, item.quantity) : "units"} left (threshold: ${item.threshold}).`}
           />
         ))}
 
@@ -104,6 +111,33 @@ export default function ActionPanel({
             <p className="text-xs text-text-disabled">No stock alerts.</p>
           </div>
         )}
+
+        <div className="pt-2 border-t border-border">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary mb-2">
+            Quick Actions
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={onExportLedger}
+              disabled={isExporting}
+              className="rounded-xl border border-border px-3 py-2 text-left text-sm font-medium text-text-primary hover:border-primary-900 hover:text-primary-900 transition-colors disabled:opacity-60"
+            >
+              Export ledger CSV
+            </button>
+            <button
+              type="button"
+              onClick={onBackupData}
+              disabled={isExporting}
+              className="rounded-xl border border-border px-3 py-2 text-left text-sm font-medium text-text-primary hover:border-primary-900 hover:text-primary-900 transition-colors disabled:opacity-60"
+            >
+              Backup data JSON
+            </button>
+          </div>
+          <p className="text-xs text-text-disabled mt-2">
+            Keep a copy of your books before sharing, migrating, or redeploying.
+          </p>
+        </div>
       </div>
     </div>
   );

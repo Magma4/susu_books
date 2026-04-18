@@ -7,11 +7,18 @@
  * - Exposes speaking state for UI feedback
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 export interface UseVoiceOutputReturn {
   /** Speak a text string in the given language */
-  speak: (text: string, lang?: string) => void;
+  speak: (text: string, lang?: string) => boolean;
   /** Stop any current speech immediately */
   stop: () => void;
   /** True while the engine is speaking */
@@ -20,7 +27,8 @@ export interface UseVoiceOutputReturn {
   isSupported: boolean;
   /** Whether speech output is enabled (user can toggle off) */
   isEnabled: boolean;
-  setEnabled: (v: boolean) => void;
+  setEnabled: Dispatch<SetStateAction<boolean>>;
+  canSpeakLanguage: (lang?: string) => boolean;
 }
 
 interface UseVoiceOutputOptions {
@@ -39,7 +47,9 @@ export function useVoiceOutput(
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
-  const [isEnabled, setEnabled] = useState(true);
+  const [isEnabled, setEnabled] = useState(
+    defaultLang.toLowerCase().startsWith("en")
+  );
 
   // Cache the best available voice per language to avoid re-querying
   const voiceCacheRef = useRef<Map<string, SpeechSynthesisVoice>>(new Map());
@@ -63,9 +73,17 @@ export function useVoiceOutput(
     }
   }, []);
 
+  const canSpeakLanguage = useCallback(
+    (lang = defaultLang) => {
+      if (!isSupported || typeof window === "undefined") return false;
+      return findBestVoice(lang, voiceCacheRef.current) != null || isEnglishish(lang);
+    },
+    [defaultLang, isSupported]
+  );
+
   const speak = useCallback(
     (text: string, lang = defaultLang) => {
-      if (!isSupported || !isEnabled || !text.trim()) return;
+      if (!isSupported || !isEnabled || !text.trim()) return false;
 
       // Cancel any in-progress speech
       window.speechSynthesis.cancel();
@@ -80,6 +98,8 @@ export function useVoiceOutput(
       const bestVoice = findBestVoice(lang, voiceCacheRef.current);
       if (bestVoice) {
         utterance.voice = bestVoice;
+      } else if (!isEnglishish(lang)) {
+        return false;
       }
 
       utterance.onstart = () => setIsSpeaking(true);
@@ -88,6 +108,7 @@ export function useVoiceOutput(
 
       utteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
+      return true;
     },
     [isSupported, isEnabled, defaultLang, rate, pitch]
   );
@@ -107,7 +128,15 @@ export function useVoiceOutput(
     };
   }, [isSupported]);
 
-  return { speak, stop, isSpeaking, isSupported, isEnabled, setEnabled };
+  return {
+    speak,
+    stop,
+    isSpeaking,
+    isSupported,
+    isEnabled,
+    setEnabled,
+    canSpeakLanguage,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -131,14 +160,14 @@ function buildVoiceCache(
     collected.get(prefix)!.push(voice);
   }
 
-  for (const [prefix, vList] of collected.entries()) {
+  collected.forEach((vList, prefix) => {
     // Prefer non-default, then default
     const best =
       vList.find((v) => v.localService) ??
       vList.find((v) => v.default) ??
       vList[0];
     cache.set(prefix, best);
-  }
+  });
 
   return cache;
 }
@@ -165,4 +194,8 @@ function findBestVoice(
 
   // 3. Cache lookup
   return cache.get(prefix) ?? null;
+}
+
+function isEnglishish(lang: string): boolean {
+  return lang.toLowerCase().startsWith("en");
 }

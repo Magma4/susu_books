@@ -1,0 +1,23 @@
+{
+  "purchase_confirmed": "An rubuta. {item} {quantity} {unit}, {currency} {total_amount}. Stock: {new_stock_level} {unit}.",
+  "purchase_confirmed_with_supplier": "An rubuta. {item} {quantity} {unit} daga {supplier}, {currency} {total_amount}. Stock: {new_stock_level} {unit}.",
+  "sale_confirmed": "An rubuta. Ka sayar da {item} {quantity} {unit}, {currency} {total_amount}. Riba: {currency} {profit}. Stock: {remaining_stock} {unit}.",
+  "sale_low_stock_warning": "An rubuta. Amma {item} ya rage — sai {remaining_stock} {unit} ya saura!",
+  "sale_out_of_stock": "An rubuta. Amma {item} ya ƙare! Ka sayo wani.",
+  "expense_confirmed": "An rubuta. {category}: {currency} {amount}. Jimlar kashe kuɗi yau: {currency} {total_expenses_today}.",
+  "inventory_single": "{item}: {quantity} {unit} a cikin stock. Farashin: {currency} {avg_cost} kowane.",
+  "inventory_low": "Gargaɗi! {item}: sai {quantity} {unit} ya rage.",
+  "inventory_out": "{item} YA ƘARE a stock!",
+  "inventory_all_header": "Kayayyakin ka:",
+  "inventory_item_line": "  {item}: {quantity} {unit} ({status})",
+  "inventory_empty": "Ba ka da kaya a stock tukuna.",
+  "daily_summary": "Yau: Tallace-tallace {currency} {total_revenue}, Saye {currency} {total_cost}, Kashe kuɗi {currency} {total_expenses}. Riba: {currency} {net_profit}. Transactions {transaction_count}. Mafi kyawun kaya: {top_selling_item}.",
+  "daily_summary_comparison_up": "Da kyau! Ya fi jiya da {profit_change_pct}%!",
+  "daily_summary_comparison_down": "Jiya ya fi yau da {profit_change_pct}%.",
+  "weekly_report": "Wannan mako: Jimlar riba {currency} {total_profit}. Kowace rana {currency} {avg_daily_profit}. Rana mafi kyau: {best_day}. Transactions {total_transactions}.",
+  "credit_profile": "A kwanaki {period_days} da suka wuce: average daily revenue {currency} {avg_daily_revenue}, average daily profit {currency} {avg_daily_profit}, active days {active_days}, consistency score {consistency_score}. Risk level: {risk_level}.",
+  "clarify": "Ban fahimta ba. Don Allah ka sake faɗa.",
+  "photo_unclear": "Ban iya ganin transaction sosai a hoton ba. Don Allah ka sake ɗauka.",
+  "error": "Wani abu ya faru. Don Allah ka sake gwadawa.",
+  "welcome": "Barka da zuwa Susu Books! Danna button kore sannan ka faɗa min game da kasuwancin ka."
+}

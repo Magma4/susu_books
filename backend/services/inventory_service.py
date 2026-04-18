@@ -1,61 +1,79 @@
 """
 Susu Books - Inventory Service
-Manages stock levels using a weighted average cost (WAC) method.
+Tracks stock using weighted average cost and rebuilds inventory when needed.
 """
 
+from __future__ import annotations
+
 import logging
-from datetime import datetime
-from typing import Optional, Tuple
+from datetime import UTC, datetime
+from typing import Optional
 
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from models import Inventory
 from config import get_settings
+from models import Inventory, Transaction
+from schemas import TransactionType, normalize_item_name, normalize_unit_name
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
+def utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class InventoryService:
-    """All inventory mutations go through this service."""
+    """All inventory mutations and queries flow through this service."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
     async def _get_or_create(self, item: str, unit: Optional[str] = None) -> Inventory:
-        """Return existing inventory row for item (case-insensitive), or create a new one."""
-        normalized = item.strip().lower()
+        normalized_item = normalize_item_name(item)
         result = await self.db.execute(
-            select(Inventory).where(Inventory.item == normalized)
+            select(Inventory).where(Inventory.item == normalized_item)
         )
-        inv = result.scalar_one_or_none()
-        if inv is None:
-            inv = Inventory(
-                item=normalized,
+        inventory = result.scalar_one_or_none()
+        if inventory is None:
+            inventory = Inventory(
+                item=normalized_item,
                 quantity=0.0,
-                unit=unit,
+                unit=normalize_unit_name(unit) if unit else None,
                 avg_cost=None,
                 last_purchase_price=None,
+                last_sale_price=None,
                 low_stock_threshold=settings.default_low_stock_threshold,
-                is_low_stock=False,
-                updated_at=datetime.utcnow(),
+                is_low_stock=True,
+                created_at=utcnow(),
+                updated_at=utcnow(),
             )
-            self.db.add(inv)
+            self.db.add(inventory)
             await self.db.flush()
-            logger.info("New inventory item created: %s", normalized)
-        return inv
+        return inventory
 
-    def _update_low_stock_flag(self, inv: Inventory) -> None:
-        inv.is_low_stock = inv.quantity <= inv.low_stock_threshold
+    @staticmethod
+    def _update_status(inventory: Inventory) -> None:
+        inventory.is_low_stock = inventory.quantity <= inventory.low_stock_threshold
 
-    # ------------------------------------------------------------------
-    # Add stock (from a purchase)
-    # ------------------------------------------------------------------
+    def _build_item_payload(self, inventory: Inventory) -> dict[str, object]:
+        status = "ok"
+        if inventory.quantity <= 0:
+            status = "out"
+        elif inventory.quantity <= inventory.low_stock_threshold:
+            status = "low"
+
+        return {
+            "item": inventory.item,
+            "quantity": round(inventory.quantity, 2),
+            "unit": inventory.unit,
+            "avg_cost": round(inventory.avg_cost, 4) if inventory.avg_cost is not None else None,
+            "last_purchase_price": inventory.last_purchase_price,
+            "last_sale_price": inventory.last_sale_price,
+            "low_stock_threshold": inventory.low_stock_threshold,
+            "status": status,
+        }
 
     async def add_stock(
         self,
@@ -64,142 +82,162 @@ class InventoryService:
         unit: Optional[str],
         purchase_price: float,
     ) -> Inventory:
-        """
-        Increase stock by quantity units.
-        Recalculate weighted average cost:
-            new_avg = (old_qty * old_avg + added_qty * purchase_price) / (old_qty + added_qty)
-        """
-        inv = await self._get_or_create(item, unit)
+        inventory = await self._get_or_create(item, unit)
 
-        old_qty = inv.quantity
-        old_avg = inv.avg_cost or purchase_price  # treat first purchase as baseline
+        old_quantity = inventory.quantity
+        old_average = inventory.avg_cost if inventory.avg_cost is not None else purchase_price
+        new_quantity = old_quantity + quantity
+        new_average = ((old_quantity * old_average) + (quantity * purchase_price)) / new_quantity
 
-        new_qty = old_qty + quantity
-        new_avg = ((old_qty * old_avg) + (quantity * purchase_price)) / new_qty
-
-        inv.quantity = new_qty
-        inv.avg_cost = round(new_avg, 4)
-        inv.last_purchase_price = purchase_price
+        inventory.quantity = round(new_quantity, 4)
+        inventory.avg_cost = round(new_average, 4)
+        inventory.last_purchase_price = purchase_price
         if unit:
-            inv.unit = unit
-        inv.updated_at = datetime.utcnow()
-        self._update_low_stock_flag(inv)
+            inventory.unit = normalize_unit_name(unit)
+        inventory.updated_at = utcnow()
+        self._update_status(inventory)
 
         await self.db.flush()
-        return inv
-
-    # ------------------------------------------------------------------
-    # Remove stock (from a sale)
-    # ------------------------------------------------------------------
+        return inventory
 
     async def remove_stock(
         self,
         item: str,
         quantity: float,
         sale_price: float,
-    ) -> Tuple[Inventory, float]:
-        """
-        Decrease stock by quantity units.
-        Computes profit_on_sale = (sale_price - avg_cost) * quantity.
-        If stock goes negative, we allow it but log a warning.
+        unit: Optional[str] = None,
+    ) -> tuple[Inventory, float]:
+        inventory = await self._get_or_create(item, unit)
 
-        Returns (updated Inventory, profit_on_sale).
-        """
-        inv = await self._get_or_create(item)
-
-        if inv.quantity < quantity:
+        if inventory.quantity < quantity:
             logger.warning(
-                "Selling %s x%.2f but only %.2f in stock — allowing negative inventory",
-                item, quantity, inv.quantity
+                "Selling %s x%.2f with only %.2f in stock; allowing negative inventory.",
+                inventory.item,
+                quantity,
+                inventory.quantity,
             )
 
-        avg_cost = inv.avg_cost or 0.0
-        profit_on_sale = (sale_price - avg_cost) * quantity
+        average_cost = inventory.avg_cost or 0.0
+        total_profit = (sale_price - average_cost) * quantity
 
-        inv.quantity = inv.quantity - quantity
-        inv.updated_at = datetime.utcnow()
-        self._update_low_stock_flag(inv)
+        inventory.quantity = round(inventory.quantity - quantity, 4)
+        inventory.last_sale_price = sale_price
+        if unit and not inventory.unit:
+            inventory.unit = normalize_unit_name(unit)
+        inventory.updated_at = utcnow()
+        self._update_status(inventory)
 
         await self.db.flush()
-        return inv, profit_on_sale
-
-    # ------------------------------------------------------------------
-    # Query
-    # ------------------------------------------------------------------
+        return inventory, round(total_profit, 2)
 
     async def get_item(self, item: str) -> Optional[Inventory]:
-        """Return Inventory row for a specific item, or None."""
-        normalized = item.strip().lower()
+        normalized_item = normalize_item_name(item)
         result = await self.db.execute(
-            select(Inventory).where(Inventory.item == normalized)
+            select(Inventory).where(Inventory.item == normalized_item)
         )
         return result.scalar_one_or_none()
 
     async def get_all(self) -> list[Inventory]:
-        """Return all inventory rows ordered by item name."""
         result = await self.db.execute(
-            select(Inventory).order_by(Inventory.item)
+            select(Inventory).order_by(Inventory.quantity.asc(), Inventory.item.asc())
         )
         return list(result.scalars().all())
 
     async def get_low_stock_items(self) -> list[Inventory]:
-        """Return items where is_low_stock is True."""
         result = await self.db.execute(
-            select(Inventory).where(Inventory.is_low_stock == True)  # noqa: E712
+            select(Inventory)
+            .where(Inventory.is_low_stock == True)  # noqa: E712
+            .order_by(Inventory.quantity.asc(), Inventory.item.asc())
         )
         return list(result.scalars().all())
 
-    async def check_inventory(self, item: Optional[str] = None) -> dict:
-        """
-        Gemma function: check_inventory handler.
-        If item is given, return details for that item.
-        If not, return all items + low-stock flags.
-        """
+    async def check_inventory(self, item: Optional[str] = None) -> dict[str, object]:
         if item:
-            inv = await self.get_item(item)
-            if inv is None:
+            inventory = await self.get_item(item)
+            if inventory is None:
                 return {
-                    "item": item,
+                    "items": [],
+                    "item": normalize_item_name(item),
                     "found": False,
-                    "message": f"No inventory record found for '{item}'.",
                 }
+
+            payload = self._build_item_payload(inventory)
             return {
+                "items": [payload],
+                "item": payload["item"],
+                "quantity": payload["quantity"],
+                "unit": payload["unit"],
+                "avg_cost": payload["avg_cost"],
+                "last_purchase_price": payload["last_purchase_price"],
+                "last_sale_price": payload["last_sale_price"],
+                "status": payload["status"],
                 "found": True,
-                "item": inv.item,
-                "quantity": inv.quantity,
-                "unit": inv.unit,
-                "avg_cost": inv.avg_cost,
-                "last_purchase_price": inv.last_purchase_price,
-                "low_stock_threshold": inv.low_stock_threshold,
-                "is_low_stock": inv.is_low_stock,
-            }
-        else:
-            all_items = await self.get_all()
-            low_stock = [i for i in all_items if i.is_low_stock]
-            return {
-                "items": [
-                    {
-                        "item": i.item,
-                        "quantity": i.quantity,
-                        "unit": i.unit,
-                        "avg_cost": i.avg_cost,
-                        "is_low_stock": i.is_low_stock,
-                        "low_stock_threshold": i.low_stock_threshold,
-                    }
-                    for i in all_items
-                ],
-                "total_items": len(all_items),
-                "low_stock_count": len(low_stock),
-                "low_stock_items": [i.item for i in low_stock],
             }
 
+        items = await self.get_all()
+        return {
+            "items": [self._build_item_payload(item_row) for item_row in items],
+        }
+
     async def update_threshold(self, item: str, threshold: float) -> Optional[Inventory]:
-        """Update the low_stock_threshold for a specific item."""
-        inv = await self.get_item(item)
-        if inv is None:
+        inventory = await self.get_item(item)
+        if inventory is None:
             return None
-        inv.low_stock_threshold = threshold
-        self._update_low_stock_flag(inv)
-        inv.updated_at = datetime.utcnow()
+
+        inventory.low_stock_threshold = threshold
+        inventory.updated_at = utcnow()
+        self._update_status(inventory)
         await self.db.flush()
-        return inv
+        return inventory
+
+    async def rebuild_from_transactions(self) -> None:
+        existing_thresholds = {
+            inventory.item: inventory.low_stock_threshold
+            for inventory in await self.get_all()
+        }
+
+        await self.db.execute(delete(Inventory))
+        await self.db.flush()
+
+        result = await self.db.execute(
+            select(Transaction).order_by(Transaction.created_at.asc(), Transaction.id.asc())
+        )
+        transactions = list(result.scalars().all())
+
+        for transaction in transactions:
+            if transaction.type == TransactionType.purchase:
+                inventory = await self._get_or_create(transaction.item, transaction.unit)
+                inventory.low_stock_threshold = existing_thresholds.get(
+                    inventory.item,
+                    settings.default_low_stock_threshold,
+                )
+                quantity = transaction.quantity or 0.0
+                unit_price = transaction.unit_price or 0.0
+                old_quantity = inventory.quantity
+                old_average = inventory.avg_cost if inventory.avg_cost is not None else unit_price
+                new_quantity = old_quantity + quantity
+                if new_quantity > 0:
+                    inventory.avg_cost = round(
+                        ((old_quantity * old_average) + (quantity * unit_price)) / new_quantity,
+                        4,
+                    )
+                inventory.quantity = round(new_quantity, 4)
+                inventory.last_purchase_price = unit_price or inventory.last_purchase_price
+                inventory.unit = normalize_unit_name(transaction.unit) if transaction.unit else inventory.unit
+                inventory.updated_at = utcnow()
+                self._update_status(inventory)
+                continue
+
+            if transaction.type == TransactionType.sale:
+                inventory = await self._get_or_create(transaction.item, transaction.unit)
+                inventory.low_stock_threshold = existing_thresholds.get(
+                    inventory.item,
+                    settings.default_low_stock_threshold,
+                )
+                inventory.quantity = round(inventory.quantity - (transaction.quantity or 0.0), 4)
+                inventory.last_sale_price = transaction.unit_price or inventory.last_sale_price
+                inventory.unit = normalize_unit_name(transaction.unit) if transaction.unit else inventory.unit
+                inventory.updated_at = utcnow()
+                self._update_status(inventory)
+
+        await self.db.flush()

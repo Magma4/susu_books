@@ -6,6 +6,11 @@
 
 import { txColors, formatAmount, formatTime, relativeTime } from "@/styles/theme";
 import type { Transaction } from "@/lib/types";
+import {
+  formatTransactionSubtitle,
+  formatTransactionTitle,
+  formatUnitLabel,
+} from "@/lib/display";
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -18,6 +23,9 @@ export default function TransactionCard({
   isNew = false,
 }: TransactionCardProps) {
   const style = txColors[t.type];
+  const title = formatTransactionTitle(t);
+  const subtitle = formatTransactionSubtitle(t);
+  const unitLabel = t.unit ? formatUnitLabel(t.unit, t.quantity) : null;
 
   return (
     <div
@@ -43,12 +51,12 @@ export default function TransactionCard({
         <div className="flex items-start justify-between gap-2">
           {/* Item + counterparty */}
           <div className="min-w-0">
-            <p className="font-semibold text-text-primary text-sm capitalize truncate">
-              {t.item}
+            <p className="font-semibold text-text-primary text-sm truncate">
+              {title}
             </p>
-            {(t.counterparty || t.category) && (
+            {subtitle && (
               <p className="text-2xs text-text-secondary truncate mt-0.5">
-                {t.counterparty ?? t.category}
+                {subtitle}
               </p>
             )}
           </div>
@@ -65,9 +73,9 @@ export default function TransactionCard({
         </div>
 
         {/* Quantity/unit row */}
-        {t.quantity != null && t.unit && (
+        {t.quantity != null && unitLabel && (
           <p className="text-2xs text-text-secondary mt-1">
-            {t.quantity} {t.unit}
+            {t.quantity} {unitLabel}
             {t.unit_price != null
               ? ` × ${formatAmount(t.unit_price, t.currency)}`
               : ""}

@@ -36,7 +36,7 @@ export default function RootLayout({
         {/* Manifest for PWA feel */}
         <link rel="manifest" href="/manifest.json" />
         {/* Apple touch icon */}
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
       <body className="h-full overflow-hidden">{children}</body>
     </html>

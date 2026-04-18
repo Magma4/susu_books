@@ -1,0 +1,23 @@
+{
+  "purchase_confirmed": "Yɛakyerɛw. {item} {quantity} {unit}, {currency} {total_amount}. Wo stock: {new_stock_level} {unit}.",
+  "purchase_confirmed_with_supplier": "Yɛakyerɛw. {item} {quantity} {unit} fi {supplier} hɔ, {currency} {total_amount}. Wo stock: {new_stock_level} {unit}.",
+  "sale_confirmed": "Yɛakyerɛw. Wotɔn {item} {quantity} {unit}, {currency} {total_amount}. Wo mfaso: {currency} {profit}. Wo stock: {remaining_stock} {unit}.",
+  "sale_low_stock_warning": "Yɛakyerɛw. Nanso {item} aka {remaining_stock} {unit} nkoa!",
+  "sale_out_of_stock": "Yɛakyerɛw. Nanso {item} asa! Kɔtɔ bi ntɛm.",
+  "expense_confirmed": "Yɛakyerɛw. {category}: {currency} {amount}. Ɛnnɛ sika a woadi: {currency} {total_expenses_today}.",
+  "inventory_single": "{item}: {quantity} {unit} wɔ wo stock mu. Ne bo: {currency} {avg_cost} biara.",
+  "inventory_low": "Kɔkɔ! {item}: aka {quantity} {unit} nkoa.",
+  "inventory_out": "{item} ASA wɔ wo stock mu!",
+  "inventory_all_header": "Wo nneɛma a ɛwɔ stock mu:",
+  "inventory_item_line": "  {item}: {quantity} {unit} ({status})",
+  "inventory_empty": "Wonni nneɛma biara wɔ stock mu da.",
+  "daily_summary": "Ɛnnɛ: Wotɔn {currency} {total_revenue}, Wotɔɔ {currency} {total_cost}, Wo sika a woadi {currency} {total_expenses}. Wo mfaso: {currency} {net_profit}. Transactions {transaction_count}. Adeɛ a wotɔn pii: {top_selling_item}.",
+  "daily_summary_comparison_up": "Ɛyɛ paa! Ɛsen ɛnnora {profit_change_pct}%!",
+  "daily_summary_comparison_down": "Ɛnnora na ɛyɛɛ yie sen ɛnnɛ {profit_change_pct}%.",
+  "weekly_report": "Nnawɔtwe yi: Wo mfaso nyinaa {currency} {total_profit}. Da biara {currency} {avg_daily_profit}. Da a ɛyɛɛ yie: {best_day}. Transactions {total_transactions}.",
+  "credit_profile": "Nnada {period_days} a atwam mu: average daily revenue {currency} {avg_daily_revenue}, average daily profit {currency} {avg_daily_profit}, active days {active_days}, consistency score {consistency_score}. Risk level: {risk_level}.",
+  "clarify": "Mante aseɛ yie. Mepa wo kyɛw, ka bio.",
+  "photo_unclear": "Mihu transaction no mu yie wɔ mfonini no mu. Mepa wo kyɛw, fa mfonini foforo.",
+  "error": "Biribi antɔ mu yie. Mepa wo kyɛw, bɔ mmɔden bio.",
+  "welcome": "Akwaaba Susu Books! Mia button tuntum no na ka wo aguadeɛ ho asɛm kyerɛ me."
+}
