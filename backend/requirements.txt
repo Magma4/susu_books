@@ -12,6 +12,7 @@ aiosqlite==0.20.0
 # Pydantic and settings
 pydantic==2.10.3
 pydantic-settings==2.6.1
+python-dotenv==1.0.1
 
 # HTTP client (Ollama)
 httpx==0.28.1

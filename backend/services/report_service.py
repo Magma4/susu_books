@@ -1,111 +1,94 @@
 """
 Susu Books - Report Service
-Generates daily summaries, weekly reports, and credit profiles.
+Computes daily summaries, weekly reports, and lender-friendly credit profiles.
 """
 
+from __future__ import annotations
+
 import logging
-from datetime import datetime, date, timedelta
-from typing import Optional
 from collections import defaultdict
+from datetime import UTC, date, datetime, timedelta
+from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
 
-from models import Transaction, DailySummary
+from models import DailySummary, Transaction
 from schemas import TransactionType
 
 logger = logging.getLogger(__name__)
 
 
+def utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class ReportService:
+    """Read-only financial reporting built from the transaction ledger."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _date_range(self, target_date: date) -> tuple[datetime, datetime]:
-        start = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0)
-        end = datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59, 999999)
+    @staticmethod
+    def _date_range(target_date: date) -> tuple[datetime, datetime]:
+        start = datetime.combine(target_date, datetime.min.time())
+        end = datetime.combine(target_date, datetime.max.time())
         return start, end
 
     async def _transactions_for_date(self, target_date: date) -> list[Transaction]:
         start, end = self._date_range(target_date)
         result = await self.db.execute(
             select(Transaction)
-            .where(Transaction.created_at >= start)
-            .where(Transaction.created_at <= end)
+            .where(Transaction.created_at >= start, Transaction.created_at <= end)
+            .order_by(Transaction.created_at.asc(), Transaction.id.asc())
         )
         return list(result.scalars().all())
 
-    # ------------------------------------------------------------------
-    # Daily Summary
-    # ------------------------------------------------------------------
-
-    async def daily_summary(self, target_date: Optional[date] = None) -> dict:
-        """
-        Compute a full daily summary.
-        Caches the result in daily_summaries table.
-        Returns comparison-to-yesterday metrics.
-        """
-        if target_date is None:
-            target_date = date.today()
-
+    async def daily_summary(self, target_date: Optional[date] = None) -> dict[str, object]:
+        target_date = target_date or date.today()
         transactions = await self._transactions_for_date(target_date)
 
         total_revenue = sum(
-            t.total_amount for t in transactions if t.type == TransactionType.sale
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.sale
         )
         total_cost = sum(
-            t.total_amount for t in transactions if t.type == TransactionType.purchase
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.purchase
         )
         total_expenses = sum(
-            t.total_amount for t in transactions if t.type == TransactionType.expense
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.expense
         )
         net_profit = total_revenue - total_cost - total_expenses
         transaction_count = len(transactions)
 
-        # Find top-selling item by revenue
-        sales = [t for t in transactions if t.type == TransactionType.sale]
-        item_revenue: dict[str, float] = defaultdict(float)
-        for t in sales:
-            item_revenue[t.item] += t.total_amount
-        top_selling_item = max(item_revenue, key=item_revenue.get) if item_revenue else None
+        selling_quantities: dict[str, float] = defaultdict(float)
+        for transaction in transactions:
+            if transaction.type == TransactionType.sale:
+                selling_quantities[transaction.item] += float(transaction.quantity or 0.0)
 
-        # Persist summary
-        await self._upsert_summary(
-            target_date, total_revenue, total_cost, total_expenses,
-            net_profit, transaction_count, top_selling_item
-        )
+        top_selling_item: Optional[str] = None
+        top_selling_quantity: Optional[float] = None
+        if selling_quantities:
+            top_selling_item = max(selling_quantities, key=selling_quantities.get)
+            top_selling_quantity = round(selling_quantities[top_selling_item], 2)
 
-        # Comparison to yesterday
         yesterday = target_date - timedelta(days=1)
-        yesterday_txns = await self._transactions_for_date(yesterday)
-        yesterday_revenue = sum(
-            t.total_amount for t in yesterday_txns if t.type == TransactionType.sale
-        )
-        yesterday_profit = (
-            sum(t.total_amount for t in yesterday_txns if t.type == TransactionType.sale)
-            - sum(t.total_amount for t in yesterday_txns if t.type == TransactionType.purchase)
-            - sum(t.total_amount for t in yesterday_txns if t.type == TransactionType.expense)
-        )
+        yesterday_summary = await self._compute_daily_totals(yesterday)
+        yesterday_profit = yesterday_summary["net_profit"]
+        profit_change_pct: Optional[float] = None
+        if yesterday_profit != 0:
+            profit_change_pct = round(((net_profit - yesterday_profit) / abs(yesterday_profit)) * 100, 2)
 
-        profit_margin_pct = (net_profit / total_revenue * 100) if total_revenue > 0 else None
+        profit_margin_pct: Optional[float] = None
+        if total_revenue > 0:
+            profit_margin_pct = round((net_profit / total_revenue) * 100, 2)
 
-        comparison = {
-            "yesterday_revenue": round(yesterday_revenue, 2),
-            "yesterday_profit": round(yesterday_profit, 2),
-            "revenue_change": round(total_revenue - yesterday_revenue, 2),
-            "profit_change": round(net_profit - yesterday_profit, 2),
-            "revenue_change_pct": (
-                round((total_revenue - yesterday_revenue) / yesterday_revenue * 100, 1)
-                if yesterday_revenue > 0 else None
-            ),
-        }
-
-        return {
+        payload = {
             "date": target_date.isoformat(),
             "total_revenue": round(total_revenue, 2),
             "total_cost": round(total_cost, 2),
@@ -113,12 +96,66 @@ class ReportService:
             "net_profit": round(net_profit, 2),
             "transaction_count": transaction_count,
             "top_selling_item": top_selling_item,
-            "profit_margin_pct": round(profit_margin_pct, 1) if profit_margin_pct is not None else None,
-            "comparison_to_yesterday": comparison,
+            "top_selling_quantity": top_selling_quantity,
+            "profit_change_pct": profit_change_pct,
+            "currency": "GHS",
+            "profit_margin_pct": profit_margin_pct,
+            "comparison_to_yesterday": {
+                "yesterday_revenue": round(yesterday_summary["total_revenue"], 2),
+                "yesterday_profit": round(yesterday_profit, 2),
+                "revenue_change": round(total_revenue - yesterday_summary["total_revenue"], 2),
+                "profit_change": round(net_profit - yesterday_profit, 2),
+                "revenue_change_pct": (
+                    round(
+                        ((total_revenue - yesterday_summary["total_revenue"]) / yesterday_summary["total_revenue"]) * 100,
+                        2,
+                    )
+                    if yesterday_summary["total_revenue"] not in {0, 0.0}
+                    else None
+                ),
+            },
+        }
+
+        await self._upsert_summary(
+            target_date=target_date,
+            total_revenue=payload["total_revenue"],
+            total_cost=payload["total_cost"],
+            total_expenses=payload["total_expenses"],
+            net_profit=payload["net_profit"],
+            transaction_count=transaction_count,
+            top_selling_item=top_selling_item,
+            top_selling_quantity=top_selling_quantity,
+        )
+
+        return payload
+
+    async def _compute_daily_totals(self, target_date: date) -> dict[str, float]:
+        transactions = await self._transactions_for_date(target_date)
+        total_revenue = sum(
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.sale
+        )
+        total_cost = sum(
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.purchase
+        )
+        total_expenses = sum(
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.expense
+        )
+        return {
+            "total_revenue": round(total_revenue, 2),
+            "total_cost": round(total_cost, 2),
+            "total_expenses": round(total_expenses, 2),
+            "net_profit": round(total_revenue - total_cost - total_expenses, 2),
         }
 
     async def _upsert_summary(
         self,
+        *,
         target_date: date,
         total_revenue: float,
         total_cost: float,
@@ -126,8 +163,8 @@ class ReportService:
         net_profit: float,
         transaction_count: int,
         top_selling_item: Optional[str],
+        top_selling_quantity: Optional[float],
     ) -> None:
-        """Insert or replace the daily_summaries row for target_date."""
         result = await self.db.execute(
             select(DailySummary).where(DailySummary.date == target_date)
         )
@@ -142,177 +179,190 @@ class ReportService:
         summary.net_profit = net_profit
         summary.transaction_count = transaction_count
         summary.top_selling_item = top_selling_item
-        summary.generated_at = datetime.utcnow()
+        summary.top_selling_quantity = top_selling_quantity
+        summary.generated_at = utcnow()
         await self.db.flush()
 
-    # ------------------------------------------------------------------
-    # Weekly Report
-    # ------------------------------------------------------------------
-
-    async def weekly_report(self) -> dict:
-        """
-        Compute last 7 calendar days (today inclusive).
-        Returns daily profit trend, best/worst days, top items by revenue, totals.
-        """
+    async def weekly_report(self) -> dict[str, object]:
         today = date.today()
-        start_date = today - timedelta(days=6)
+        period_start = today - timedelta(days=6)
 
-        daily_trend = []
-        total_revenue = 0.0
-        total_cost = 0.0
-        total_expenses = 0.0
-        item_revenue: dict[str, float] = defaultdict(float)
-
-        best_day: Optional[dict] = None
-        worst_day: Optional[dict] = None
+        summaries: list[dict[str, object]] = []
+        total_transactions = 0
+        top_item_revenue: dict[str, float] = defaultdict(float)
 
         for offset in range(7):
-            day = start_date + timedelta(days=offset)
-            txns = await self._transactions_for_date(day)
+            day = period_start + timedelta(days=offset)
+            summary = await self.daily_summary(day)
+            summaries.append(summary)
+            total_transactions += int(summary["transaction_count"])
 
-            day_revenue = sum(t.total_amount for t in txns if t.type == TransactionType.sale)
-            day_cost = sum(t.total_amount for t in txns if t.type == TransactionType.purchase)
-            day_expenses = sum(t.total_amount for t in txns if t.type == TransactionType.expense)
-            day_profit = day_revenue - day_cost - day_expenses
+            transactions = await self._transactions_for_date(day)
+            for transaction in transactions:
+                if transaction.type == TransactionType.sale:
+                    top_item_revenue[transaction.item] += transaction.total_amount
 
-            total_revenue += day_revenue
-            total_cost += day_cost
-            total_expenses += day_expenses
+        total_profit = round(sum(float(summary["net_profit"]) for summary in summaries), 2)
+        avg_daily_profit = round(total_profit / 7, 2)
+        total_revenue = round(sum(float(summary["total_revenue"]) for summary in summaries), 2)
+        total_cost = round(sum(float(summary["total_cost"]) for summary in summaries), 2)
+        total_expenses = round(sum(float(summary["total_expenses"]) for summary in summaries), 2)
 
-            for t in txns:
-                if t.type == TransactionType.sale:
-                    item_revenue[t.item] += t.total_amount
+        best_summary = max(summaries, key=lambda item: float(item["net_profit"]))
+        worst_summary = min(summaries, key=lambda item: float(item["net_profit"]))
 
-            day_data = {
-                "date": day.isoformat(),
-                "revenue": round(day_revenue, 2),
-                "cost": round(day_cost, 2),
-                "expenses": round(day_expenses, 2),
-                "profit": round(day_profit, 2),
-                "transaction_count": len(txns),
+        daily_trend = [
+            {
+                "date": str(summary["date"]),
+                "revenue": summary["total_revenue"],
+                "cost": summary["total_cost"],
+                "expenses": summary["total_expenses"],
+                "profit": summary["net_profit"],
+                "transaction_count": summary["transaction_count"],
             }
-            daily_trend.append(day_data)
-
-            if best_day is None or day_profit > best_day["profit"]:
-                best_day = day_data
-            if worst_day is None or day_profit < worst_day["profit"]:
-                worst_day = day_data
-
-        total_profit = total_revenue - total_cost - total_expenses
-        avg_daily_profit = total_profit / 7
+            for summary in summaries
+        ]
 
         top_items = sorted(
-            [{"item": k, "revenue": round(v, 2)} for k, v in item_revenue.items()],
-            key=lambda x: x["revenue"],
+            (
+                {"item": item, "revenue": round(revenue, 2)}
+                for item, revenue in top_item_revenue.items()
+            ),
+            key=lambda payload: payload["revenue"],
             reverse=True,
-        )[:5]
+        )[:3]
 
         return {
-            "start_date": start_date.isoformat(),
+            "period_start": period_start.isoformat(),
+            "period_end": today.isoformat(),
+            "currency": "GHS",
+            "start_date": period_start.isoformat(),
             "end_date": today.isoformat(),
-            "total_revenue": round(total_revenue, 2),
-            "total_cost": round(total_cost, 2),
-            "total_expenses": round(total_expenses, 2),
-            "total_profit": round(total_profit, 2),
-            "avg_daily_profit": round(avg_daily_profit, 2),
-            "best_day": best_day,
-            "worst_day": worst_day,
-            "daily_trend": daily_trend,
+            "total_revenue": total_revenue,
+            "total_cost": total_cost,
+            "total_expenses": total_expenses,
+            "total_profit": total_profit,
+            "avg_daily_profit": avg_daily_profit,
+            "total_transactions": total_transactions,
+            "best_day": {
+                "date": best_summary["date"],
+                "profit": best_summary["net_profit"],
+            },
+            "worst_day": {
+                "date": worst_summary["date"],
+                "profit": worst_summary["net_profit"],
+            },
+            "top_items": top_items,
             "top_items_by_revenue": top_items,
+            "daily_profits": [float(summary["net_profit"]) for summary in summaries],
+            "daily_trend": daily_trend,
         }
 
-    # ------------------------------------------------------------------
-    # Credit Profile
-    # ------------------------------------------------------------------
-
-    async def export_credit_profile(self, days: int = 180) -> dict:
-        """
-        Aggregated financial summary for creditworthiness assessment.
-        Computes consistency score: % of days in period with any revenue.
-        """
+    async def export_credit_profile(self, days: int = 180) -> dict[str, object]:
         end_date = date.today()
         start_date = end_date - timedelta(days=days - 1)
 
-        start_dt = datetime(start_date.year, start_date.month, start_date.day)
-        end_dt = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59)
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        end_dt = datetime.combine(end_date, datetime.max.time())
 
         result = await self.db.execute(
             select(Transaction)
-            .where(Transaction.created_at >= start_dt)
-            .where(Transaction.created_at <= end_dt)
+            .where(Transaction.created_at >= start_dt, Transaction.created_at <= end_dt)
+            .order_by(Transaction.created_at.asc(), Transaction.id.asc())
         )
-        all_txns = list(result.scalars().all())
+        transactions = list(result.scalars().all())
 
         total_revenue = sum(
-            t.total_amount for t in all_txns if t.type == TransactionType.sale
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.sale
         )
         total_cost = sum(
-            t.total_amount for t in all_txns if t.type == TransactionType.purchase
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.purchase
         )
         total_expenses = sum(
-            t.total_amount for t in all_txns if t.type == TransactionType.expense
+            transaction.total_amount
+            for transaction in transactions
+            if transaction.type == TransactionType.expense
         )
         total_profit = total_revenue - total_cost - total_expenses
-        total_transactions = len(all_txns)
+        total_transactions = len(transactions)
 
-        avg_daily_revenue = total_revenue / days
-        avg_daily_profit = total_profit / days
+        avg_daily_revenue = round(total_revenue / days, 2)
+        avg_daily_profit = round(total_profit / days, 2)
 
-        # Consistency score: percentage of days with at least one sale
-        days_with_sales: set[date] = set()
-        for t in all_txns:
-            if t.type == TransactionType.sale:
-                days_with_sales.add(t.created_at.date())
-        consistency_score = (len(days_with_sales) / days) * 100
-
-        # Top expense categories
-        category_totals: dict[str, float] = defaultdict(float)
-        for t in all_txns:
-            if t.type == TransactionType.expense and t.category:
-                category_totals[t.category] += t.total_amount
-        top_categories = sorted(
-            [{"category": k, "total": round(v, 2)} for k, v in category_totals.items()],
-            key=lambda x: x["total"],
-            reverse=True,
-        )[:10]
-
-        # Monthly breakdown
-        monthly: dict[str, dict] = defaultdict(
-            lambda: {"revenue": 0.0, "cost": 0.0, "expenses": 0.0, "profit": 0.0, "transactions": 0}
+        active_days = len(
+            {
+                transaction.created_at.date()
+                for transaction in transactions
+                if transaction.type in {TransactionType.purchase, TransactionType.sale, TransactionType.expense}
+            }
         )
-        for t in all_txns:
-            key = t.created_at.strftime("%Y-%m")
-            if t.type == TransactionType.sale:
-                monthly[key]["revenue"] += t.total_amount
-            elif t.type == TransactionType.purchase:
-                monthly[key]["cost"] += t.total_amount
-            elif t.type == TransactionType.expense:
-                monthly[key]["expenses"] += t.total_amount
-            monthly[key]["transactions"] += 1
-        for k, v in monthly.items():
-            v["profit"] = round(v["revenue"] - v["cost"] - v["expenses"], 2)
-            v["month"] = k
+        consistency_score = round(active_days / days, 4)
 
-        monthly_breakdown = sorted(monthly.values(), key=lambda x: x["month"])
+        item_revenue: dict[str, float] = defaultdict(float)
+        for transaction in transactions:
+            if transaction.type == TransactionType.sale:
+                item_revenue[transaction.item] += transaction.total_amount
+        top_categories = sorted(
+            (
+                {"category": item, "revenue": round(revenue, 2)}
+                for item, revenue in item_revenue.items()
+            ),
+            key=lambda payload: payload["revenue"],
+            reverse=True,
+        )[:5]
 
-        # Simple risk level
-        if consistency_score >= 70 and avg_daily_profit > 0:
+        monthly_breakdown: dict[str, dict[str, object]] = defaultdict(
+            lambda: {
+                "month": "",
+                "revenue": 0.0,
+                "cost": 0.0,
+                "expenses": 0.0,
+                "profit": 0.0,
+                "transactions": 0,
+            }
+        )
+
+        for transaction in transactions:
+            month_key = transaction.created_at.strftime("%Y-%m")
+            monthly_breakdown[month_key]["month"] = month_key
+            monthly_breakdown[month_key]["transactions"] = int(monthly_breakdown[month_key]["transactions"]) + 1
+            if transaction.type == TransactionType.sale:
+                monthly_breakdown[month_key]["revenue"] = float(monthly_breakdown[month_key]["revenue"]) + transaction.total_amount
+            elif transaction.type == TransactionType.purchase:
+                monthly_breakdown[month_key]["cost"] = float(monthly_breakdown[month_key]["cost"]) + transaction.total_amount
+            elif transaction.type == TransactionType.expense:
+                monthly_breakdown[month_key]["expenses"] = float(monthly_breakdown[month_key]["expenses"]) + transaction.total_amount
+
+        for payload in monthly_breakdown.values():
+            revenue = float(payload["revenue"])
+            cost = float(payload["cost"])
+            expenses = float(payload["expenses"])
+            payload["revenue"] = round(revenue, 2)
+            payload["cost"] = round(cost, 2)
+            payload["expenses"] = round(expenses, 2)
+            payload["profit"] = round(revenue - cost - expenses, 2)
+
+        risk_level = "high"
+        if consistency_score >= 0.7 and avg_daily_profit > 0:
             risk_level = "low"
-        elif consistency_score >= 40:
+        elif consistency_score >= 0.4:
             risk_level = "medium"
-        else:
-            risk_level = "high"
 
         return {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "period_days": days,
-            "avg_daily_revenue": round(avg_daily_revenue, 2),
-            "avg_daily_profit": round(avg_daily_profit, 2),
+            "avg_daily_revenue": avg_daily_revenue,
+            "avg_daily_profit": avg_daily_profit,
             "total_revenue": round(total_revenue, 2),
             "total_profit": round(total_profit, 2),
             "total_transactions": total_transactions,
-            "consistency_score": round(consistency_score, 1),
+            "active_days": active_days,
+            "consistency_score": consistency_score,
             "top_categories": top_categories,
-            "monthly_breakdown": monthly_breakdown,
+            "monthly_breakdown": sorted(monthly_breakdown.values(), key=lambda payload: payload["month"]),
             "risk_level": risk_level,
         }

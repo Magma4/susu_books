@@ -5,6 +5,7 @@
  */
 
 import type { InventoryItem } from "@/lib/types";
+import { formatItemLabel, formatUnitLabel } from "@/lib/display";
 import { formatAmount } from "@/styles/theme";
 
 interface InventoryPanelProps {
@@ -72,6 +73,9 @@ export default function InventoryPanel({
 function InventoryRow({ item }: { item: InventoryItem }) {
   const isZero = item.quantity <= 0;
   const isLow = item.is_low_stock && !isZero;
+  const itemLabel = formatItemLabel(item.item);
+  const unitLabel = item.unit ? formatUnitLabel(item.unit, item.quantity) : null;
+  const costUnitLabel = item.unit ? formatUnitLabel(item.unit, 1) : "unit";
 
   // Stock fill percentage (capped at 100%)
   const fillPct = isZero
@@ -95,12 +99,12 @@ function InventoryRow({ item }: { item: InventoryItem }) {
 
       {/* Name + unit */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-text-primary capitalize truncate">
-          {item.item}
+        <p className="text-sm font-medium text-text-primary truncate">
+          {itemLabel}
         </p>
         {item.avg_cost != null && (
           <p className="text-2xs text-text-secondary">
-            avg cost {formatAmount(item.avg_cost, "GHS")} / {item.unit ?? "unit"}
+            avg cost {formatAmount(item.avg_cost, "GHS")} / {costUnitLabel}
           </p>
         )}
       </div>
@@ -113,9 +117,9 @@ function InventoryRow({ item }: { item: InventoryItem }) {
           }`}
         >
           {item.quantity.toLocaleString()}
-          {item.unit ? (
+          {unitLabel ? (
             <span className="font-sans font-normal text-text-secondary ml-1 text-xs">
-              {item.unit}
+              {unitLabel}
             </span>
           ) : null}
         </p>

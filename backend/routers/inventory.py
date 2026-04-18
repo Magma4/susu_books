@@ -3,6 +3,7 @@ Susu Books - Inventory Router
 Endpoints for querying and configuring inventory.
 """
 
+from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,6 +14,10 @@ from schemas import InventoryOut, InventoryUpdate
 from services.inventory_service import InventoryService
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 @router.get("", response_model=list[InventoryOut])
@@ -66,13 +71,12 @@ async def update_inventory_settings(
             detail=f"No inventory record found for '{item_name}'.",
         )
 
-    from datetime import datetime
     if payload.low_stock_threshold is not None:
         inv = await svc.update_threshold(item_name, payload.low_stock_threshold)
 
     if payload.unit is not None:
         inv.unit = payload.unit
-        inv.updated_at = datetime.utcnow()
+        inv.updated_at = utcnow()
         await db.flush()
         await db.refresh(inv)
 

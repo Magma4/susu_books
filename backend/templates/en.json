@@ -1,0 +1,23 @@
+{
+  "purchase_confirmed": "Recorded. {quantity} {unit} of {item} for {currency} {total_amount}. Stock: {new_stock_level} {unit}.",
+  "purchase_confirmed_with_supplier": "Recorded. {quantity} {unit} of {item} from {supplier} for {currency} {total_amount}. Stock: {new_stock_level} {unit}.",
+  "sale_confirmed": "Recorded. Sold {quantity} {unit} of {item} for {currency} {total_amount}. Profit: {currency} {profit}. Stock: {remaining_stock} {unit}.",
+  "sale_low_stock_warning": "Recorded sale. But warning: only {remaining_stock} {unit} of {item} left!",
+  "sale_out_of_stock": "Recorded sale. But warning: {item} is now out of stock! Restock soon.",
+  "expense_confirmed": "Recorded. {category} expense: {currency} {amount}. Total expenses today: {currency} {total_expenses_today}.",
+  "inventory_single": "{item}: {quantity} {unit} in stock. Average cost: {currency} {avg_cost} per {unit}.",
+  "inventory_low": "Low stock warning! {item}: only {quantity} {unit} left.",
+  "inventory_out": "{item} is OUT OF STOCK.",
+  "inventory_all_header": "Your inventory:",
+  "inventory_item_line": "  {item}: {quantity} {unit} ({status})",
+  "inventory_empty": "You do not have any inventory yet.",
+  "daily_summary": "Today: Revenue {currency} {total_revenue}, Costs {currency} {total_cost}, Expenses {currency} {total_expenses}. Profit: {currency} {net_profit}. {transaction_count} transactions. Best seller: {top_selling_item}.",
+  "daily_summary_comparison_up": "That's {profit_change_pct}% more than yesterday!",
+  "daily_summary_comparison_down": "That's {profit_change_pct}% less than yesterday.",
+  "weekly_report": "This week: Total profit {currency} {total_profit}. Average {currency} {avg_daily_profit}/day. Best day: {best_day}. {total_transactions} transactions.",
+  "credit_profile": "Over the last {period_days} days: average daily revenue {currency} {avg_daily_revenue}, average daily profit {currency} {avg_daily_profit}, active days {active_days}, consistency score {consistency_score}. Risk level: {risk_level}.",
+  "clarify": "I didn't quite catch that. Could you say it again?",
+  "photo_unclear": "I couldn't clearly read a transaction from that image. Please try another photo.",
+  "error": "Something went wrong. Please try again.",
+  "welcome": "Welcome to Susu Books! Tap the green button and tell me about your business."
+}

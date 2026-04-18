@@ -11,14 +11,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { VoiceState } from "@/lib/types";
 
-// TypeScript shims for Web Speech API (not fully in all lib.dom.d.ts versions)
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
-
 export interface UseVoiceInputReturn {
   /** Current state of the voice capture pipeline */
   voiceState: VoiceState;

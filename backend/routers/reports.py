@@ -10,12 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
+from schemas import CreditProfileResponse, DailySummaryResponse, WeeklyReportResponse
 from services.report_service import ReportService
 
 router = APIRouter(prefix="/api", tags=["reports"])
 
 
-@router.get("/summary/daily")
+@router.get("/summary/daily", response_model=DailySummaryResponse)
 async def daily_summary(
     date: Optional[str] = Query(
         None,
@@ -45,7 +46,7 @@ async def daily_summary(
     return summary
 
 
-@router.get("/summary/weekly")
+@router.get("/summary/weekly", response_model=WeeklyReportResponse)
 async def weekly_report(
     db: AsyncSession = Depends(get_db),
 ):
@@ -58,7 +59,7 @@ async def weekly_report(
     return report
 
 
-@router.get("/export/credit-profile")
+@router.get("/export/credit-profile", response_model=CreditProfileResponse)
 async def credit_profile(
     days: int = Query(
         180,

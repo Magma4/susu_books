@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from schemas import ChatRequest, ChatResponse, ImageChatResponse
-from services.gemma_service import GemmaService
+from schemas import ChatRequest, ChatResponse, ImageChatResponse, LanguageInfo
+from services.gemma_service import AVAILABLE_LANGUAGES, GemmaService
 from config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ async def chat(
     """
     Main chat endpoint. Accepts a user message (from voice or text input),
     sends it through the Gemma 4 function-calling loop, and returns:
-      - response: natural language reply from Gemma (in the user's language)
+      - response: template-rendered reply in the user's language
       - transactions: list of transactions that were recorded
       - function_calls: audit log of all function calls made
     """
@@ -47,7 +47,7 @@ async def chat(
         logger.exception("Gemma chat error: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"AI service error: {exc}. Is Ollama running with the model loaded?",
+            detail="AI service error. Check Ollama and the backend server logs.",
         )
     finally:
         await svc.close()
@@ -56,6 +56,7 @@ async def chat(
         response=response_text,
         transactions=transactions,
         function_calls=fn_calls,
+        language=payload.language,
         language_detected=payload.language,
     )
 
@@ -77,7 +78,8 @@ async def chat_with_image(
     """
     OCR endpoint. Accepts an image file (JPEG/PNG/WEBP) and an optional
     text prompt. Gemma 4's vision capability extracts transaction information
-    from receipts, handwritten notes, or product labels.
+    from receipts, handwritten notes, or product labels. Final user-facing
+    output is always rendered from local templates, not free-form model text.
     """
     # Validate content type
     allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
@@ -107,7 +109,7 @@ async def chat_with_image(
         logger.exception("Gemma image chat error: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"AI vision service error: {exc}. Is Ollama running with the model loaded?",
+            detail="AI vision service error. Check Ollama and the backend server logs.",
         )
     finally:
         await svc.close()
@@ -116,8 +118,15 @@ async def chat_with_image(
         response=response_text,
         transactions=transactions,
         function_calls=fn_calls,
+        language=language,
         raw_ocr_text=raw_ocr,
     )
+
+
+@router.get("/languages", response_model=list[LanguageInfo])
+async def list_languages():
+    """Return the languages available for UI selection and templates."""
+    return AVAILABLE_LANGUAGES
 
 
 # ---------------------------------------------------------------------------
@@ -155,12 +164,13 @@ async def health_check(
 async def list_models(
     db: AsyncSession = Depends(get_db),
 ):
-    """List Ollama models available on this machine."""
+    """List the configured model status for the active provider."""
     svc = GemmaService(db)
     status_data = await svc.health_check()
     await svc.close()
     return {
         "available_models": status_data.get("available_models", []),
-        "target_model": settings.ollama_model,
+        "target_model": status_data.get("target_model", settings.ollama_model),
         "model_loaded": status_data.get("model_loaded", False),
+        "ai_provider": status_data.get("ai_provider", "ollama"),
     }
