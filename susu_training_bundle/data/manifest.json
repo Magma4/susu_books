@@ -1,0 +1,84 @@
+{
+  "seed": 42,
+  "system_prompt_word_count": 346,
+  "train_examples": 2700,
+  "validation_examples": 300,
+  "intents": [
+    "purchase",
+    "sale",
+    "expense",
+    "inventory_item",
+    "inventory_all",
+    "daily_summary",
+    "weekly_report",
+    "credit_profile",
+    "clarify"
+  ],
+  "languages": [
+    "en",
+    "tw",
+    "ha",
+    "pcm",
+    "sw"
+  ],
+  "train_distribution": {
+    "by_language": {
+      "en": 540,
+      "ha": 540,
+      "pcm": 540,
+      "sw": 540,
+      "tw": 540
+    },
+    "by_intent": {
+      "clarify": 110,
+      "credit_profile": 110,
+      "daily_summary": 215,
+      "expense": 430,
+      "inventory_all": 135,
+      "inventory_item": 325,
+      "purchase": 620,
+      "sale": 620,
+      "weekly_report": 135
+    },
+    "by_function": {
+      "check_inventory": 460,
+      "clarify_input": 110,
+      "daily_summary": 215,
+      "export_credit_profile": 110,
+      "record_expense": 430,
+      "record_purchase": 620,
+      "record_sale": 620,
+      "weekly_report": 135
+    }
+  },
+  "validation_distribution": {
+    "by_language": {
+      "en": 60,
+      "ha": 60,
+      "pcm": 60,
+      "sw": 60,
+      "tw": 60
+    },
+    "by_intent": {
+      "clarify": 10,
+      "credit_profile": 10,
+      "daily_summary": 25,
+      "expense": 50,
+      "inventory_all": 15,
+      "inventory_item": 35,
+      "purchase": 70,
+      "sale": 70,
+      "weekly_report": 15
+    },
+    "by_function": {
+      "check_inventory": 50,
+      "clarify_input": 10,
+      "daily_summary": 25,
+      "export_credit_profile": 10,
+      "record_expense": 50,
+      "record_purchase": 70,
+      "record_sale": 70,
+      "weekly_report": 15
+    }
+  }
+}
