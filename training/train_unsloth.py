@@ -5,9 +5,11 @@ Train a Susu Books extraction adapter with Unsloth LoRA.
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
-from pathlib import Path
 import os
+from pathlib import Path
+from typing import Any
 
 CURRENT_DIR = Path(__file__).resolve().parent
 
@@ -90,14 +92,63 @@ def write_ollama_modelfile(directory: Path, base_system_prompt: str, quant_file_
     return modelfile
 
 
+def build_sft_config(args: argparse.Namespace, is_bfloat16_supported) -> Any:
+    from trl import SFTConfig
+
+    config_kwargs: dict[str, Any] = {
+        "dataset_text_field": "text",
+        "per_device_train_batch_size": args.batch_size,
+        "gradient_accumulation_steps": args.gradient_accumulation,
+        "warmup_ratio": args.warmup_ratio,
+        "num_train_epochs": args.epochs,
+        "learning_rate": args.learning_rate,
+        "fp16": not is_bfloat16_supported(),
+        "bf16": is_bfloat16_supported(),
+        "logging_steps": args.logging_steps,
+        "eval_strategy": "steps",
+        "eval_steps": args.eval_steps,
+        "save_strategy": "steps",
+        "save_steps": args.save_steps,
+        "save_total_limit": 2,
+        "load_best_model_at_end": True,
+        "metric_for_best_model": "eval_loss",
+        "optim": "adamw_8bit",
+        "weight_decay": args.weight_decay,
+        "lr_scheduler_type": args.lr_scheduler,
+        "max_grad_norm": args.max_grad_norm,
+        "seed": args.seed,
+        "output_dir": str(args.output_dir),
+        "report_to": args.report_to,
+    }
+
+    supported = set(inspect.signature(SFTConfig.__init__).parameters)
+    if "eval_strategy" not in supported and "evaluation_strategy" in supported:
+        config_kwargs["evaluation_strategy"] = config_kwargs.pop("eval_strategy")
+
+    if "max_seq_length" in supported:
+        config_kwargs["max_seq_length"] = args.max_seq_length
+    elif "max_length" in supported:
+        config_kwargs["max_length"] = args.max_seq_length
+
+    filtered_kwargs = {
+        key: value
+        for key, value in config_kwargs.items()
+        if key in supported
+    }
+    dropped = sorted(set(config_kwargs) - set(filtered_kwargs))
+    if dropped:
+        print(f"Skipping unsupported SFTConfig options for this TRL version: {', '.join(dropped)}")
+    return SFTConfig(**filtered_kwargs)
+
+
 def main() -> None:
     args = parse_args()
 
     try:
         import torch
         from datasets import load_dataset
-        from trl import SFTConfig, SFTTrainer
         from unsloth import FastLanguageModel, is_bfloat16_supported
+        from trl import SFTTrainer
     except ImportError as exc:
         raise SystemExit(
             "Training dependencies are missing. Install training/requirements.txt in a Kaggle or GPU environment first."
@@ -153,32 +204,7 @@ def main() -> None:
         processing_class=tokenizer,
         train_dataset=dataset["train"],
         eval_dataset=dataset["validation"],
-        args=SFTConfig(
-            dataset_text_field="text",
-            per_device_train_batch_size=args.batch_size,
-            gradient_accumulation_steps=args.gradient_accumulation,
-            warmup_ratio=args.warmup_ratio,
-            num_train_epochs=args.epochs,
-            learning_rate=args.learning_rate,
-            fp16=not is_bfloat16_supported(),
-            bf16=is_bfloat16_supported(),
-            logging_steps=args.logging_steps,
-            eval_strategy="steps",
-            eval_steps=args.eval_steps,
-            save_strategy="steps",
-            save_steps=args.save_steps,
-            save_total_limit=2,
-            load_best_model_at_end=True,
-            metric_for_best_model="eval_loss",
-            optim="adamw_8bit",
-            weight_decay=args.weight_decay,
-            lr_scheduler_type=args.lr_scheduler,
-            max_grad_norm=args.max_grad_norm,
-            seed=args.seed,
-            output_dir=str(args.output_dir),
-            report_to=args.report_to,
-            max_seq_length=args.max_seq_length,
-        ),
+        args=build_sft_config(args, is_bfloat16_supported),
     )
 
     trainer_stats = trainer.train()
