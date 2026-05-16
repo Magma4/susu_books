@@ -255,8 +255,13 @@ class RuleExtractionService:
 
     @classmethod
     def _normalize(cls, text: str) -> str:
+        twi_keyboard_normalized = re.sub(
+            r"(?<=[a-zA-Z])3|3(?=[a-zA-Z])",
+            "e",
+            text.replace(")", "ɔ"),
+        )
         transliterated = (
-            text.lower()
+            twi_keyboard_normalized.lower()
             .replace("ɔ", "o")
             .replace("ɛ", "e")
             .replace("₵", " ghs ")

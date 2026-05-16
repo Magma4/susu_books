@@ -129,13 +129,20 @@ class GemmaService:
         source: TransactionSource,
         raw_input: str,
     ) -> tuple[str, list[TransactionOut], list[FunctionCallRecord]]:
+        fallback_tool_calls = self.rules.extract(raw_input) if source == TransactionSource.voice else []
+        if fallback_tool_calls:
+            logger.info("Using deterministic extraction fallback for input: %s", raw_input)
+            transactions, call_log = await self._execute_tool_calls(
+                tool_calls=fallback_tool_calls,
+                language=language,
+                source=source,
+                raw_input=raw_input,
+            )
+            response_text = self._render_response(language, call_log)
+            return response_text, transactions, call_log
+
         assistant_message = await self._run_extraction_pass(messages)
         tool_calls = self._extract_tool_calls(assistant_message)
-        fallback_tool_calls = self.rules.extract(raw_input) if source == TransactionSource.voice else []
-
-        if fallback_tool_calls and self._should_use_rule_fallback(tool_calls):
-            logger.info("Using deterministic extraction fallback for input: %s", raw_input)
-            tool_calls = fallback_tool_calls
 
         if not tool_calls:
             clarify = FunctionCallRecord(
@@ -154,43 +161,8 @@ class GemmaService:
             raw_input=raw_input,
         )
 
-        if (
-            fallback_tool_calls
-            and not transactions
-            and self._should_retry_with_rule_fallback(call_log)
-            and tool_calls != fallback_tool_calls
-        ):
-            logger.info("Retrying failed extraction with deterministic fallback for input: %s", raw_input)
-            transactions, call_log = await self._execute_tool_calls(
-                tool_calls=fallback_tool_calls,
-                language=language,
-                source=source,
-                raw_input=raw_input,
-            )
-
         response_text = self._render_response(language, call_log)
         return response_text, transactions, call_log
-
-    @staticmethod
-    def _should_use_rule_fallback(tool_calls: list[dict[str, Any]]) -> bool:
-        if not tool_calls:
-            return True
-
-        names = {
-            str(call.get("function", {}).get("name", "")).strip()
-            for call in tool_calls
-        }
-        return bool(names) and names <= {"clarify_input"}
-
-    @staticmethod
-    def _should_retry_with_rule_fallback(call_log: list[FunctionCallRecord]) -> bool:
-        if not call_log:
-            return True
-
-        for call in call_log:
-            if call.success and call.name != "clarify_input":
-                return False
-        return True
 
     async def _execute_tool_calls(
         self,

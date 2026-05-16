@@ -185,20 +185,11 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
 
 
 class GemmaFallbackTests(AsyncDatabaseTestCase):
-    async def test_clarify_response_retries_twi_purchase_with_rule_fallback(self) -> None:
+    async def test_known_twi_purchase_uses_rule_fallback_without_waiting_for_model(self) -> None:
         service = GemmaService(self.session)
 
         async def fake_extraction_pass(_messages):
-            return {
-                "tool_calls": [
-                    {
-                        "function": {
-                            "name": "clarify_input",
-                            "arguments": {"reason": "unclear_input"},
-                        }
-                    }
-                ]
-            }
+            raise AssertionError("Known deterministic phrases should not wait for Gemma.")
 
         service._run_extraction_pass = fake_extraction_pass
         try:
@@ -239,6 +230,17 @@ class RuleExtractionTests(unittest.TestCase):
 
         self.assertEqual(calls[0]["function"]["name"], "record_purchase")
         self.assertEqual(calls[0]["function"]["arguments"]["item"], "onions")
+
+    def test_twi_plantain_purchase_accepts_native_and_keyboard_spellings(self) -> None:
+        extractor = RuleExtractionService()
+
+        native_calls = extractor.extract("meretɔ borɔdeɛ 8 cedis")
+        keyboard_calls = extractor.extract("mereto bor)de3 8 cedis")
+
+        for calls in (native_calls, keyboard_calls):
+            self.assertEqual(calls[0]["function"]["name"], "record_purchase")
+            self.assertEqual(calls[0]["function"]["arguments"]["item"], "plantains")
+            self.assertEqual(calls[0]["function"]["arguments"]["unit_price"], 8.0)
 
 
 class ExportRouterTests(AsyncDatabaseTestCase):
