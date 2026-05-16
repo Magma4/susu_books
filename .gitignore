@@ -23,3 +23,5 @@ susEnv/
 # Fine-tuning artifacts
 training/runs/
 training/exports/
+susu-books-lora/
+susu-books-lora-kaggle.tar.gz
