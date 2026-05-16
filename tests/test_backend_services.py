@@ -22,9 +22,11 @@ import models  # noqa: F401
 from database import Base, get_db
 from routers import exports
 from schemas import RecordExpenseArgs, RecordPurchaseArgs, RecordSaleArgs, normalize_item_name
+from services.gemma_service import GemmaService
 from services.inventory_service import InventoryService
 from services.ledger_service import LedgerService
 from services.report_service import ReportService
+from services.rule_extraction_service import RuleExtractionService
 from services.template_service import TemplateService
 
 
@@ -180,6 +182,63 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
         )
         self.assertIn("Recorded.", rendered)
         self.assertIn("rice", rendered)
+
+
+class GemmaFallbackTests(AsyncDatabaseTestCase):
+    async def test_clarify_response_retries_twi_purchase_with_rule_fallback(self) -> None:
+        service = GemmaService(self.session)
+
+        async def fake_extraction_pass(_messages):
+            return {
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "clarify_input",
+                            "arguments": {"reason": "unclear_input"},
+                        }
+                    }
+                ]
+            }
+
+        service._run_extraction_pass = fake_extraction_pass
+        try:
+            response, transactions, calls = await service.chat("mereto gyeene 10 GHS", language="tw")
+        finally:
+            await service.close()
+
+        self.assertEqual(len(transactions), 1)
+        self.assertEqual(transactions[0].item, "onions")
+        self.assertEqual(calls[0].name, "record_purchase")
+        self.assertIn("onions", response)
+
+
+class RuleExtractionTests(unittest.TestCase):
+    def test_twi_onion_purchase_uses_safe_defaults(self) -> None:
+        extractor = RuleExtractionService()
+
+        calls = extractor.extract("mereto gyeene 10 GHS")
+
+        self.assertEqual(len(calls), 1)
+        function = calls[0]["function"]
+        self.assertEqual(function["name"], "record_purchase")
+        self.assertEqual(
+            function["arguments"],
+            {
+                "item": "onions",
+                "quantity": 1.0,
+                "unit": "pieces",
+                "currency": "GHS",
+                "unit_price": 10.0,
+            },
+        )
+
+    def test_twi_asr_gyeene_mishearing_still_maps_to_onions(self) -> None:
+        extractor = RuleExtractionService()
+
+        calls = extractor.extract("me to j ne 10 GHS")
+
+        self.assertEqual(calls[0]["function"]["name"], "record_purchase")
+        self.assertEqual(calls[0]["function"]["arguments"]["item"], "onions")
 
 
 class ExportRouterTests(AsyncDatabaseTestCase):
