@@ -126,13 +126,17 @@ class RuleExtractionService:
             return []
 
         parsed_unit = self._find_unit(normalized)
-        quantity = self._extract_quantity(normalized, parsed_unit, parsed_item)
-        unit = parsed_unit.unit if parsed_unit else "pieces"
+        quantity, quantity_explicit = self._extract_quantity(normalized, parsed_unit, parsed_item)
+        unit = parsed_unit.unit if parsed_unit else "lot"
 
         if quantity <= 0:
             return []
 
-        unit_price = round(amount / quantity, 2) if self._looks_like_total(normalized) and quantity > 1 else amount
+        unit_price = (
+            round(amount / quantity, 2)
+            if quantity_explicit and quantity > 1 and self._looks_like_total(normalized)
+            else amount
+        )
         arguments: dict[str, Any] = {
             "item": parsed_item.item,
             "quantity": quantity,
@@ -204,25 +208,25 @@ class RuleExtractionService:
                 return ParsedUnit(unit=unit, index=index)
         return None
 
-    def _extract_quantity(self, normalized: str, unit: ParsedUnit | None, item: ParsedItem) -> float:
+    def _extract_quantity(self, normalized: str, unit: ParsedUnit | None, item: ParsedItem) -> tuple[float, bool]:
         tokens = normalized.split()
         numbers = [(match.start(), float(match.group(0))) for match in self._NUMBER_RE.finditer(normalized)]
 
         if unit and unit.index > 0:
             previous = tokens[unit.index - 1]
             if self._is_number(previous):
-                return float(previous)
+                return float(previous), True
 
         numbers_before_item = [value for position, value in numbers if position < item.start]
         if numbers_before_item:
-            return numbers_before_item[-1]
+            return numbers_before_item[-1], True
 
         amount = self._extract_amount(normalized)
         non_amount_numbers = [value for _, value in numbers if amount is None or value != amount]
         if len(non_amount_numbers) == 1:
-            return non_amount_numbers[0]
+            return non_amount_numbers[0], True
 
-        return 1.0
+        return 1.0, False
 
     def _extract_amount(self, normalized: str) -> float | None:
         money_patterns = [

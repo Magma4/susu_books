@@ -83,6 +83,10 @@ UNIT_ALIASES: dict[str, str] = {
     "bowls": "bowls",
     "carton": "cartons",
     "cartons": "cartons",
+    "lot": "lot",
+    "lots": "lot",
+    "bundle": "bundles",
+    "bundles": "bundles",
     "magunia": "bags",
     "gunia": "bags",
 }

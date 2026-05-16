@@ -217,7 +217,7 @@ class RuleExtractionTests(unittest.TestCase):
             {
                 "item": "onions",
                 "quantity": 1.0,
-                "unit": "pieces",
+                "unit": "lot",
                 "currency": "GHS",
                 "unit_price": 10.0,
             },
@@ -240,7 +240,20 @@ class RuleExtractionTests(unittest.TestCase):
         for calls in (native_calls, keyboard_calls):
             self.assertEqual(calls[0]["function"]["name"], "record_purchase")
             self.assertEqual(calls[0]["function"]["arguments"]["item"], "plantains")
+            self.assertEqual(calls[0]["function"]["arguments"]["quantity"], 1.0)
+            self.assertEqual(calls[0]["function"]["arguments"]["unit"], "lot")
             self.assertEqual(calls[0]["function"]["arguments"]["unit_price"], 8.0)
+
+    def test_twi_purchase_with_explicit_quantity_and_total_calculates_unit_price(self) -> None:
+        extractor = RuleExtractionService()
+
+        calls = extractor.extract("meretɔ borɔdeɛ 4 bunches total 80 cedis")
+
+        self.assertEqual(calls[0]["function"]["name"], "record_purchase")
+        self.assertEqual(calls[0]["function"]["arguments"]["item"], "plantains")
+        self.assertEqual(calls[0]["function"]["arguments"]["quantity"], 4.0)
+        self.assertEqual(calls[0]["function"]["arguments"]["unit"], "bunches")
+        self.assertEqual(calls[0]["function"]["arguments"]["unit_price"], 20.0)
 
 
 class ExportRouterTests(AsyncDatabaseTestCase):
