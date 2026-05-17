@@ -155,6 +155,69 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
         self.assertIsNotNone(inventory)
         self.assertEqual(inventory.quantity, 36.0)
 
+    async def test_sales_first_inventory_pricing_infers_partial_bundle_sale(self) -> None:
+        inventory_service = InventoryService(self.session)
+        ledger = LedgerService(self.session)
+
+        await inventory_service.setup_item(
+            InventorySetup(
+                item="bɔɔdeɛ",
+                quantity=40,
+                unit="pieces",
+                sale_price_amount=8,
+                sale_price_quantity=4,
+                avg_cost=1,
+                low_stock_threshold=5,
+            )
+        )
+
+        sale_result = await ledger.record_sale(
+            RecordSaleArgs(
+                item="plantains",
+                quantity=1,
+                unit="lot",
+                sale_price=2,
+                currency="GHS",
+            )
+        )
+
+        inventory = await inventory_service.get_item("plantains")
+        self.assertEqual(sale_result["quantity"], 1.0)
+        self.assertEqual(sale_result["unit"], "pieces")
+        self.assertEqual(sale_result["sale_price"], 2.0)
+        self.assertEqual(sale_result["total_amount"], 2.0)
+        self.assertEqual(sale_result["profit"], 1.0)
+        self.assertIsNotNone(inventory)
+        self.assertEqual(inventory.quantity, 39.0)
+
+    async def test_sales_first_lot_sale_uses_existing_inventory_unit_without_price_rule(self) -> None:
+        inventory_service = InventoryService(self.session)
+        ledger = LedgerService(self.session)
+
+        await inventory_service.add_stock(
+            item="bɔɔdeɛ",
+            quantity=10,
+            unit="pieces",
+            purchase_price=1,
+        )
+
+        sale_result = await ledger.record_sale(
+            RecordSaleArgs(
+                item="plantains",
+                quantity=1,
+                unit="lot",
+                sale_price=2,
+                currency="GHS",
+            )
+        )
+
+        transaction_inventory = await inventory_service.get_item("plantains")
+        self.assertEqual(sale_result["quantity"], 1.0)
+        self.assertEqual(sale_result["unit"], "pieces")
+        self.assertEqual(sale_result["total_amount"], 2.0)
+        self.assertIsNotNone(transaction_inventory)
+        self.assertEqual(transaction_inventory.quantity, 9.0)
+
     async def test_daily_summary_and_credit_profile_are_consistent(self) -> None:
         ledger = LedgerService(self.session)
         report_service = ReportService(self.session)
@@ -219,7 +282,7 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
 
 
 class GemmaFallbackTests(AsyncDatabaseTestCase):
-    async def test_known_twi_purchase_uses_rule_fallback_without_waiting_for_model(self) -> None:
+    async def test_known_twi_sale_uses_rule_fallback_without_waiting_for_model(self) -> None:
         service = GemmaService(self.session)
 
         async def fake_extraction_pass(_messages):
@@ -233,19 +296,19 @@ class GemmaFallbackTests(AsyncDatabaseTestCase):
 
         self.assertEqual(len(transactions), 1)
         self.assertEqual(transactions[0].item, "onions")
-        self.assertEqual(calls[0].name, "record_purchase")
+        self.assertEqual(calls[0].name, "record_sale")
         self.assertIn("onions", response)
 
 
 class RuleExtractionTests(unittest.TestCase):
-    def test_twi_onion_purchase_uses_safe_defaults(self) -> None:
+    def test_twi_onion_sale_uses_safe_defaults(self) -> None:
         extractor = RuleExtractionService()
 
         calls = extractor.extract("mereto gyeene 10 GHS")
 
         self.assertEqual(len(calls), 1)
         function = calls[0]["function"]
-        self.assertEqual(function["name"], "record_purchase")
+        self.assertEqual(function["name"], "record_sale")
         self.assertEqual(
             function["arguments"],
             {
@@ -253,7 +316,7 @@ class RuleExtractionTests(unittest.TestCase):
                 "quantity": 1.0,
                 "unit": "lot",
                 "currency": "GHS",
-                "unit_price": 10.0,
+                "sale_price": 10.0,
             },
         )
 
@@ -262,26 +325,29 @@ class RuleExtractionTests(unittest.TestCase):
 
         calls = extractor.extract("me to j ne 10 GHS")
 
-        self.assertEqual(calls[0]["function"]["name"], "record_purchase")
+        self.assertEqual(calls[0]["function"]["name"], "record_sale")
         self.assertEqual(calls[0]["function"]["arguments"]["item"], "onions")
 
-    def test_twi_plantain_purchase_accepts_native_and_keyboard_spellings(self) -> None:
+    def test_twi_plantain_sale_accepts_native_keyboard_and_asr_spellings(self) -> None:
         extractor = RuleExtractionService()
 
         native_calls = extractor.extract("meretɔ borɔdeɛ 8 cedis")
         keyboard_calls = extractor.extract("mereto bor)de3 8 cedis")
+        asr_calls = extractor.extract("yatɔ bɔɔdeɛ 2 GHS")
 
-        for calls in (native_calls, keyboard_calls):
-            self.assertEqual(calls[0]["function"]["name"], "record_purchase")
+        for calls in (native_calls, keyboard_calls, asr_calls):
+            self.assertEqual(calls[0]["function"]["name"], "record_sale")
             self.assertEqual(calls[0]["function"]["arguments"]["item"], "plantains")
             self.assertEqual(calls[0]["function"]["arguments"]["quantity"], 1.0)
             self.assertEqual(calls[0]["function"]["arguments"]["unit"], "lot")
-            self.assertEqual(calls[0]["function"]["arguments"]["unit_price"], 8.0)
+        self.assertEqual(native_calls[0]["function"]["arguments"]["sale_price"], 8.0)
+        self.assertEqual(keyboard_calls[0]["function"]["arguments"]["sale_price"], 8.0)
+        self.assertEqual(asr_calls[0]["function"]["arguments"]["sale_price"], 2.0)
 
-    def test_twi_purchase_with_explicit_quantity_and_total_calculates_unit_price(self) -> None:
+    def test_explicit_stock_phrase_records_purchase_with_quantity_and_total(self) -> None:
         extractor = RuleExtractionService()
 
-        calls = extractor.extract("meretɔ borɔdeɛ 4 bunches total 80 cedis")
+        calls = extractor.extract("restock borɔdeɛ 4 bunches total 80 cedis")
 
         self.assertEqual(calls[0]["function"]["name"], "record_purchase")
         self.assertEqual(calls[0]["function"]["arguments"]["item"], "plantains")
@@ -310,6 +376,15 @@ class RuleExtractionTests(unittest.TestCase):
         self.assertEqual(calls[0]["function"]["name"], "record_sale")
         self.assertEqual(calls[0]["function"]["arguments"]["item"], "plantains")
         self.assertEqual(calls[0]["function"]["arguments"]["sale_price"], 8.0)
+
+    def test_customer_bought_phrase_counts_as_vendor_sale(self) -> None:
+        extractor = RuleExtractionService()
+
+        calls = extractor.extract("customer bought gyeene 10 GHS")
+
+        self.assertEqual(calls[0]["function"]["name"], "record_sale")
+        self.assertEqual(calls[0]["function"]["arguments"]["item"], "onions")
+        self.assertEqual(calls[0]["function"]["arguments"]["sale_price"], 10.0)
 
 
 class ExportRouterTests(AsyncDatabaseTestCase):
@@ -405,7 +480,7 @@ class ApplicationSecurityTests(unittest.IsolatedAsyncioTestCase):
 
         async with AsyncClient(
             transport=ASGITransport(app=create_app()),
-            base_url="http://testserver",
+            base_url="http://localhost",
         ) as client:
             response = await client.get("/")
 

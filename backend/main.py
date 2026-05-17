@@ -18,9 +18,8 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from config import get_settings
-from database import AsyncSessionLocal, create_tables
+from database import create_tables
 from routers import ai, exports, inventory, reports, transactions
-from services.inventory_service import InventoryService
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -44,10 +43,6 @@ async def lifespan(app: FastAPI):
     """Run startup tasks before serving, and cleanup on shutdown."""
     logger.info("Starting Susu Books backend v%s", settings.app_version)
     await create_tables()
-    async with AsyncSessionLocal() as session:
-        inventory_service = InventoryService(session)
-        await inventory_service.rebuild_from_transactions()
-        await session.commit()
     logger.info("AI Provider: %s", settings.ai_provider)
     if settings.ai_provider.lower() == "gemini":
         logger.info("Gemini API model: %s", settings.gemini_model)

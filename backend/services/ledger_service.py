@@ -126,6 +126,8 @@ class LedgerService:
                     f"{inventory_before_sale.sale_price_amount:g} per "
                     f"{inventory_before_sale.sale_price_quantity:g} {unit}."
                 )
+        elif unit == "lot" and quantity == 1 and inventory_before_sale is not None and inventory_before_sale.unit:
+            unit = normalize_unit_name(inventory_before_sale.unit)
 
         total_amount = round(quantity * sale_price, 2)
         notes = " ".join(part for part in (args.notes, pricing_note) if part)
