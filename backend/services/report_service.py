@@ -11,6 +11,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import DailySummary, Transaction
@@ -165,22 +166,23 @@ class ReportService:
         top_selling_item: Optional[str],
         top_selling_quantity: Optional[float],
     ) -> None:
-        result = await self.db.execute(
-            select(DailySummary).where(DailySummary.date == target_date)
+        values = {
+            "date": target_date,
+            "total_revenue": total_revenue,
+            "total_cost": total_cost,
+            "total_expenses": total_expenses,
+            "net_profit": net_profit,
+            "transaction_count": transaction_count,
+            "top_selling_item": top_selling_item,
+            "top_selling_quantity": top_selling_quantity,
+            "generated_at": utcnow(),
+        }
+        statement = sqlite_insert(DailySummary).values(**values)
+        statement = statement.on_conflict_do_update(
+            index_elements=[DailySummary.date],
+            set_=values,
         )
-        summary = result.scalar_one_or_none()
-        if summary is None:
-            summary = DailySummary(date=target_date)
-            self.db.add(summary)
-
-        summary.total_revenue = total_revenue
-        summary.total_cost = total_cost
-        summary.total_expenses = total_expenses
-        summary.net_profit = net_profit
-        summary.transaction_count = transaction_count
-        summary.top_selling_item = top_selling_item
-        summary.top_selling_quantity = top_selling_quantity
-        summary.generated_at = utcnow()
+        await self.db.execute(statement)
         await self.db.flush()
 
     async def weekly_report(self) -> dict[str, object]:
