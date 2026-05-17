@@ -89,7 +89,7 @@ export default function HomePage() {
     backendReachable: boolean;
     providerReachable: boolean;
     modelLoaded: boolean;
-    aiProvider: "ollama" | null;
+    aiProvider: "ollama" | "gemini" | null;
   }>({
     checked: false,
     backendReachable: false,
@@ -575,7 +575,7 @@ export default function HomePage() {
               }`}
               title={
                 backendOnline
-                  ? "Ollama online"
+                  ? `${healthState.aiProvider === "gemini" ? "Google Gemini API" : "Ollama"} online`
                   : "AI offline"
               }
             />
@@ -652,7 +652,12 @@ export default function HomePage() {
                 <WeeklySpark data={weeklyReport.daily_trend} currency="GHS" />
               )}
 
-              <InventoryPanel items={inventory} isLoading={isLoadingInitial} />
+              <InventoryPanel
+                items={inventory}
+                isLoading={isLoadingInitial}
+                onInventoryChanged={refreshAll}
+                onNotify={addToast}
+              />
 
               <ActionPanel
                 alerts={inventoryAlerts}

@@ -135,6 +135,27 @@ Open:
 - Frontend: [http://localhost:3000](http://localhost:3000)
 - Backend docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
+### Hosted Gemma 4 via Google API
+
+If local Ollama slows your laptop, run inference through Google's Gemini API
+instead. Create a key in Google AI Studio or Cloud Console, restrict it to the
+Generative Language API, then set the backend environment:
+
+```bash
+cd backend
+printf '\nAI_PROVIDER=gemini\nGEMINI_API_KEY=YOUR_KEY_HERE\nGEMINI_MODEL=gemma-4-26b-a4b-it\n' >> .env
+```
+
+Restart the backend after changing `.env`. The browser never receives this key;
+all hosted model calls happen server-side in FastAPI.
+
+### Sales-First Workflow
+
+Susu Books now treats the primary voice flow as sales recording. Add inventory
+first with a selling rule, for example `40 pieces of plantains, GHS 8 per 4
+pieces`. After that, a seller can simply say `borɔdeɛ 8 cedis`; the app records
+a sale, calculates that 4 pieces were sold, and reduces inventory automatically.
+
 ## Production Deploy Notes
 
 Before you put Susu Books on a public URL, set these values explicitly:

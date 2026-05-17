@@ -4,18 +4,24 @@
  * Highlights low-stock and zero-stock items with amber/red badges.
  */
 
-import type { InventoryItem } from "@/lib/types";
+import { useState, type FormEvent } from "react";
+import { setupInventoryItem } from "@/lib/api";
+import type { InventoryItem, InventorySetupPayload } from "@/lib/types";
 import { formatItemLabel, formatUnitLabel } from "@/lib/display";
 import { formatAmount } from "@/styles/theme";
 
 interface InventoryPanelProps {
   items: InventoryItem[];
   isLoading?: boolean;
+  onInventoryChanged?: () => Promise<void> | void;
+  onNotify?: (type: "success" | "error", message: string) => void;
 }
 
 export default function InventoryPanel({
   items,
   isLoading = false,
+  onInventoryChanged,
+  onNotify,
 }: InventoryPanelProps) {
   const lowStockItems = items.filter((i) => i.is_low_stock && i.quantity > 0);
   const zeroStockItems = items.filter((i) => i.quantity <= 0);
@@ -41,6 +47,8 @@ export default function InventoryPanel({
           )}
         </div>
       </div>
+
+      <InventorySetupForm onInventoryChanged={onInventoryChanged} onNotify={onNotify} />
 
       {isLoading ? (
         <SkeletonList />
@@ -107,6 +115,13 @@ function InventoryRow({ item }: { item: InventoryItem }) {
             avg cost {formatAmount(item.avg_cost, "GHS")} / {costUnitLabel}
           </p>
         )}
+        {item.sale_price_amount != null && item.sale_price_quantity != null && (
+          <p className="text-2xs text-primary-700">
+            sells {formatAmount(item.sale_price_amount, item.sale_currency ?? "GHS")} /{" "}
+            {item.sale_price_quantity.toLocaleString()}{" "}
+            {formatUnitLabel(item.unit ?? "unit", item.sale_price_quantity)}
+          </p>
+        )}
       </div>
 
       {/* Quantity + mini bar */}
@@ -138,13 +153,121 @@ function InventoryRow({ item }: { item: InventoryItem }) {
   );
 }
 
+function InventorySetupForm({
+  onInventoryChanged,
+  onNotify,
+}: {
+  onInventoryChanged?: () => Promise<void> | void;
+  onNotify?: (type: "success" | "error", message: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [form, setForm] = useState<InventorySetupPayload>({
+    item: "plantains",
+    quantity: 40,
+    unit: "pieces",
+    sale_price_amount: 8,
+    sale_price_quantity: 4,
+    sale_currency: "GHS",
+    low_stock_threshold: 5,
+  });
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    try {
+      await setupInventoryItem(form);
+      await onInventoryChanged?.();
+      onNotify?.("success", `${form.item} stock and selling rule saved.`);
+      setIsOpen(false);
+    } catch (error) {
+      onNotify?.("error", error instanceof Error ? error.message : "Could not save inventory.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const setValue = (key: keyof InventorySetupPayload, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: ["quantity", "sale_price_amount", "sale_price_quantity", "avg_cost", "low_stock_threshold"].includes(key)
+        ? Number(value)
+        : value,
+    }));
+  };
+
+  return (
+    <div className="border-b border-border bg-primary-surface/30 px-4 py-3">
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <span>
+          <span className="block text-xs font-semibold text-primary-900 uppercase tracking-wide">
+            Add stock and price
+          </span>
+          <span className="block text-2xs text-text-secondary">
+            Example: 8 cedis per 4 plantains, then speak only sales.
+          </span>
+        </span>
+        <span className="text-primary-900 font-semibold">{isOpen ? "Close" : "Set up"}</span>
+      </button>
+
+      {isOpen && (
+        <form onSubmit={handleSubmit} className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <Input label="Item" value={form.item} onChange={(v) => setValue("item", v)} />
+          <Input label="Stock" type="number" value={form.quantity} onChange={(v) => setValue("quantity", v)} />
+          <Input label="Unit" value={form.unit} onChange={(v) => setValue("unit", v)} />
+          <Input label="Price" type="number" value={form.sale_price_amount} onChange={(v) => setValue("sale_price_amount", v)} />
+          <Input label="For quantity" type="number" value={form.sale_price_quantity} onChange={(v) => setValue("sale_price_quantity", v)} />
+          <Input label="Low stock" type="number" value={form.low_stock_threshold ?? 5} onChange={(v) => setValue("low_stock_threshold", v)} />
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="col-span-2 rounded-xl bg-primary-900 text-white font-semibold py-2 disabled:opacity-50"
+          >
+            {isSaving ? "Saving..." : "Save inventory rule"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function Input({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string | number;
+  onChange: (value: string) => void;
+  type?: string;
+}) {
+  return (
+    <label className="space-y-1">
+      <span className="text-2xs font-semibold text-text-secondary uppercase">{label}</span>
+      <input
+        type={type}
+        value={value}
+        min={type === "number" ? "0" : undefined}
+        step={type === "number" ? "0.01" : undefined}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-border bg-white px-2 py-1.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-light"
+      />
+    </label>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="px-4 py-8 text-center">
       <p className="text-4xl mb-2">📦</p>
       <p className="text-sm text-text-secondary">No inventory yet.</p>
       <p className="text-xs text-text-disabled mt-1">
-        Record a purchase to start tracking stock.
+        Add stock and a selling rule to start recording sales.
       </p>
     </div>
   );

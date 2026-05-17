@@ -20,8 +20,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 import models  # noqa: F401
 from database import Base, get_db
-from routers import exports
-from schemas import RecordExpenseArgs, RecordPurchaseArgs, RecordSaleArgs, normalize_item_name
+from routers import exports, inventory
+from schemas import InventorySetup, RecordExpenseArgs, RecordPurchaseArgs, RecordSaleArgs, normalize_item_name
 from services.gemma_service import GemmaService
 from services.inventory_service import InventoryService
 from services.ledger_service import LedgerService
@@ -120,6 +120,40 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
         self.assertEqual(sale_result["profit"], 200.0)
         self.assertIsNotNone(inventory)
         self.assertEqual(inventory.last_sale_price, 150)
+
+    async def test_sales_first_inventory_pricing_infers_quantity_from_amount(self) -> None:
+        inventory_service = InventoryService(self.session)
+        ledger = LedgerService(self.session)
+
+        await inventory_service.setup_item(
+            InventorySetup(
+                item="borɔdeɛ",
+                quantity=40,
+                unit="pieces",
+                sale_price_amount=8,
+                sale_price_quantity=4,
+                avg_cost=1,
+                low_stock_threshold=5,
+            )
+        )
+
+        sale_result = await ledger.record_sale(
+            RecordSaleArgs(
+                item="plantains",
+                quantity=1,
+                unit="lot",
+                sale_price=8,
+                currency="GHS",
+            )
+        )
+
+        inventory = await inventory_service.get_item("plantains")
+        self.assertEqual(sale_result["quantity"], 4.0)
+        self.assertEqual(sale_result["unit"], "pieces")
+        self.assertEqual(sale_result["sale_price"], 2.0)
+        self.assertEqual(sale_result["total_amount"], 8.0)
+        self.assertIsNotNone(inventory)
+        self.assertEqual(inventory.quantity, 36.0)
 
     async def test_daily_summary_and_credit_profile_are_consistent(self) -> None:
         ledger = LedgerService(self.session)
@@ -255,6 +289,28 @@ class RuleExtractionTests(unittest.TestCase):
         self.assertEqual(calls[0]["function"]["arguments"]["unit"], "bunches")
         self.assertEqual(calls[0]["function"]["arguments"]["unit_price"], 20.0)
 
+    def test_twi_group_purchase_and_person_sale_markers_work(self) -> None:
+        extractor = RuleExtractionService()
+
+        purchase_calls = extractor.extract("yɛtɔ borɔdeɛ 2 GHS")
+        sale_calls = extractor.extract("obi atɔ borɔdeɛ 2 GHS")
+
+        self.assertEqual(purchase_calls[0]["function"]["name"], "record_sale")
+        self.assertEqual(purchase_calls[0]["function"]["arguments"]["item"], "plantains")
+        self.assertEqual(purchase_calls[0]["function"]["arguments"]["sale_price"], 2.0)
+        self.assertEqual(sale_calls[0]["function"]["name"], "record_sale")
+        self.assertEqual(sale_calls[0]["function"]["arguments"]["item"], "plantains")
+        self.assertEqual(sale_calls[0]["function"]["arguments"]["sale_price"], 2.0)
+
+    def test_item_and_amount_defaults_to_sale_in_sales_first_mode(self) -> None:
+        extractor = RuleExtractionService()
+
+        calls = extractor.extract("borɔdeɛ 8 cedis")
+
+        self.assertEqual(calls[0]["function"]["name"], "record_sale")
+        self.assertEqual(calls[0]["function"]["arguments"]["item"], "plantains")
+        self.assertEqual(calls[0]["function"]["arguments"]["sale_price"], 8.0)
+
 
 class ExportRouterTests(AsyncDatabaseTestCase):
     async def asyncSetUp(self) -> None:
@@ -303,6 +359,44 @@ class ExportRouterTests(AsyncDatabaseTestCase):
             self.assertEqual(payload["counts"]["transactions"], 1)
             self.assertIn("inventory", payload)
             self.assertNotIn("raw_input", payload["transactions"][0])
+
+
+class InventoryRouterTests(AsyncDatabaseTestCase):
+    async def test_setup_endpoint_creates_price_rule(self) -> None:
+        app = FastAPI()
+        app.include_router(inventory.router)
+
+        async def override_get_db():
+            async with self.session_factory() as session:
+                try:
+                    yield session
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+                    raise
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            response = await client.post(
+                "/api/inventory/setup",
+                json={
+                    "item": "borɔdeɛ",
+                    "quantity": 40,
+                    "unit": "pieces",
+                    "sale_price_amount": 8,
+                    "sale_price_quantity": 4,
+                },
+            )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["item"], "plantains")
+        self.assertEqual(payload["sale_price_amount"], 8)
+        self.assertEqual(payload["sale_price_quantity"], 4)
 
 
 class ApplicationSecurityTests(unittest.IsolatedAsyncioTestCase):

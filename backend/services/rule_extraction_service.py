@@ -89,6 +89,15 @@ class RuleExtractionService:
         "me ton",
         "mere ton",
         "me re ton",
+        "obi ato",
+        "obi atɔ",
+        "ye to",
+        "yeto",
+        "yetoo",
+        "yɛ tɔ",
+        "yɛtɔ",
+        "ato",
+        "atɔ",
         "sayar",
         "na sayar",
         "nimeuza",
@@ -116,14 +125,12 @@ class RuleExtractionService:
         if expense_call:
             return [expense_call]
 
-        intent = self._detect_transaction_intent(normalized)
-        if intent is None:
-            return []
-
         parsed_item = self._find_item(normalized)
         amount = self._extract_amount(normalized)
         if parsed_item is None or amount is None:
             return []
+
+        intent = self._detect_transaction_intent(normalized) or "record_sale"
 
         parsed_unit = self._find_unit(normalized)
         quantity, quantity_explicit = self._extract_quantity(normalized, parsed_unit, parsed_item)

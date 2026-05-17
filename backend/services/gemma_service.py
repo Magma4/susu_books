@@ -210,6 +210,9 @@ class GemmaService:
         return transactions, call_log
 
     async def _run_extraction_pass(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
+        if settings.ai_provider.lower() == "gemini":
+            return await self._run_gemini_extraction_pass(messages)
+
         model_name = await self._resolve_model_name()
         payload = {
             "model": model_name,
@@ -249,6 +252,70 @@ class GemmaService:
         if last_error is not None:
             raise last_error
         raise RuntimeError("Ollama request failed without a specific exception.")
+
+    async def _run_gemini_extraction_pass(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
+        if not settings.gemini_api_key:
+            raise RuntimeError("GEMINI_API_KEY is required when AI_PROVIDER=gemini.")
+
+        text_parts: list[str] = [
+            "You are Susu Books' extraction engine.",
+            "Return ONLY valid JSON in this exact shape:",
+            '{"tool_calls":[{"function":{"name":"record_sale","arguments":{"item":"plantains","quantity":1,"unit":"lot","sale_price":8,"currency":"GHS"}}}]}',
+            "Do not wrap the JSON in Markdown.",
+        ]
+        inline_parts: list[dict[str, Any]] = []
+
+        for message in messages:
+            role = message.get("role", "user")
+            content = str(message.get("content", "")).strip()
+            if content:
+                text_parts.append(f"{role.upper()}: {content}")
+            for image in message.get("images", []) or []:
+                inline_parts.append(
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": image,
+                        }
+                    }
+                )
+
+        payload = {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": "\n\n".join(text_parts)},
+                        *inline_parts,
+                    ],
+                }
+            ],
+            "generationConfig": {
+                "temperature": settings.ai_temperature,
+                "topP": settings.ai_top_p,
+            },
+        }
+        url = (
+            f"{settings.gemini_base_url.rstrip('/')}/v1beta/models/"
+            f"{settings.gemini_model}:generateContent"
+        )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(settings.gemini_timeout)) as client:
+            response = await client.post(
+                url,
+                headers={
+                    "x-goog-api-key": settings.gemini_api_key,
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            response.raise_for_status()
+
+        text = self._extract_gemini_text(response.json())
+        parsed = self._parse_json_object(text)
+        tool_calls = parsed.get("tool_calls", [])
+        if isinstance(tool_calls, list):
+            return {"tool_calls": tool_calls}
+        return {}
 
     async def _execute_function(
         self,
@@ -443,6 +510,37 @@ class GemmaService:
                 return {}
         return {}
 
+    @staticmethod
+    def _extract_gemini_text(payload: dict[str, Any]) -> str:
+        candidates = payload.get("candidates") or []
+        if not candidates:
+            return ""
+        parts = candidates[0].get("content", {}).get("parts", []) or []
+        return "\n".join(str(part.get("text", "")) for part in parts if part.get("text"))
+
+    @staticmethod
+    def _parse_json_object(text: str) -> dict[str, Any]:
+        stripped = text.strip()
+        if not stripped:
+            return {}
+        if stripped.startswith("```"):
+            stripped = stripped.strip("`")
+            if stripped.lower().startswith("json"):
+                stripped = stripped[4:].strip()
+        try:
+            parsed = json.loads(stripped)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            start = stripped.find("{")
+            end = stripped.rfind("}")
+            if start >= 0 and end > start:
+                try:
+                    parsed = json.loads(stripped[start : end + 1])
+                    return parsed if isinstance(parsed, dict) else {}
+                except json.JSONDecodeError:
+                    return {}
+            return {}
+
     def _massage_arguments(self, function_name: str, args: dict[str, Any]) -> dict[str, Any]:
         normalized = dict(args)
 
@@ -484,6 +582,9 @@ class GemmaService:
         return [model["name"] for model in payload.get("models", []) if "name" in model]
 
     async def _resolve_model_name(self) -> str:
+        if settings.ai_provider.lower() == "gemini":
+            return settings.gemini_model
+
         if self._resolved_model_name:
             return self._resolved_model_name
 
@@ -521,6 +622,18 @@ class GemmaService:
         )
 
     async def health_check(self) -> dict[str, Any]:
+        if settings.ai_provider.lower() == "gemini":
+            configured = bool(settings.gemini_api_key)
+            return {
+                "ollama_reachable": configured,
+                "provider_reachable": configured,
+                "model_loaded": configured,
+                "available_models": [settings.gemini_model] if configured else [],
+                "target_model": settings.gemini_model,
+                "ai_provider": "gemini",
+                "error": None if configured else "GEMINI_API_KEY is not configured.",
+            }
+
         try:
             available_models = await self._list_available_models()
             target_model = await self._resolve_model_name()

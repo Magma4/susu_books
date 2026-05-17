@@ -74,7 +74,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 def _ensure_sqlite_schema(sync_conn) -> None:
     table_columns = {
-        "inventory": ["last_sale_price", "created_at"],
+        "inventory": [
+            "last_sale_price",
+            "created_at",
+            "sale_price_amount",
+            "sale_price_quantity",
+            "sale_currency",
+        ],
         "daily_summaries": ["top_selling_quantity"],
     }
 
@@ -94,6 +100,18 @@ def _ensure_sqlite_schema(sync_conn) -> None:
                     )
                     sync_conn.exec_driver_sql(
                         "UPDATE inventory SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"
+                    )
+                elif table_name == "inventory" and column_name == "sale_price_amount":
+                    sync_conn.exec_driver_sql(
+                        "ALTER TABLE inventory ADD COLUMN sale_price_amount FLOAT"
+                    )
+                elif table_name == "inventory" and column_name == "sale_price_quantity":
+                    sync_conn.exec_driver_sql(
+                        "ALTER TABLE inventory ADD COLUMN sale_price_quantity FLOAT"
+                    )
+                elif table_name == "inventory" and column_name == "sale_currency":
+                    sync_conn.exec_driver_sql(
+                        "ALTER TABLE inventory ADD COLUMN sale_currency VARCHAR(10) DEFAULT 'GHS' NOT NULL"
                     )
                 elif table_name == "daily_summaries" and column_name == "top_selling_quantity":
                     sync_conn.exec_driver_sql(

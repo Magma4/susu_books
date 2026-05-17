@@ -48,9 +48,12 @@ async def lifespan(app: FastAPI):
         inventory_service = InventoryService(session)
         await inventory_service.rebuild_from_transactions()
         await session.commit()
-    logger.info("AI Provider: Ollama (Local)")
-    logger.info("Ollama endpoint: %s", settings.ollama_base_url)
-    logger.info("Target model: %s", settings.ollama_model)
+    logger.info("AI Provider: %s", settings.ai_provider)
+    if settings.ai_provider.lower() == "gemini":
+        logger.info("Gemini API model: %s", settings.gemini_model)
+    else:
+        logger.info("Ollama endpoint: %s", settings.ollama_base_url)
+        logger.info("Target model: %s", settings.ollama_model)
     yield
     logger.info("Susu Books backend shutting down.")
 
@@ -103,7 +106,7 @@ def create_app() -> FastAPI:
             response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
             response.headers.setdefault(
                 "Permissions-Policy",
-                "camera=(self), microphone=(self), geolocation=(), interest-cohort=()",
+                "camera=(self), microphone=(self), speech-recognition=(self), geolocation=(), interest-cohort=()",
             )
             response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
             response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")

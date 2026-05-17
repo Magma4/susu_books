@@ -9,6 +9,7 @@ import type {
   ImageChatResponse,
   Transaction,
   InventoryItem,
+  InventorySetupPayload,
   DailySummaryData,
   WeeklyReportData,
   InventoryAlerts,
@@ -188,6 +189,13 @@ export async function getInventoryAlerts(): Promise<InventoryAlerts> {
   return request<InventoryAlerts>("/api/inventory/check/alerts");
 }
 
+export async function setupInventoryItem(payload: InventorySetupPayload): Promise<InventoryItem> {
+  return request<InventoryItem>("/api/inventory/setup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Reports
 // ---------------------------------------------------------------------------
@@ -213,7 +221,7 @@ export interface HealthStatus {
   model_loaded: boolean;
   available_models?: string[];
   target_model: string;
-  ai_provider?: "ollama";
+  ai_provider?: "ollama" | "gemini";
   error?: string;
 }
 

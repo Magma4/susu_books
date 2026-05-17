@@ -218,6 +218,9 @@ class InventoryOut(BaseModel):
     avg_cost: Optional[float]
     last_purchase_price: Optional[float]
     last_sale_price: Optional[float]
+    sale_price_amount: Optional[float]
+    sale_price_quantity: Optional[float]
+    sale_currency: str = "GHS"
     low_stock_threshold: float
     is_low_stock: bool
     created_at: datetime
@@ -229,6 +232,20 @@ class InventoryOut(BaseModel):
 class InventoryUpdate(BaseModel):
     low_stock_threshold: Optional[float] = Field(None, gt=0)
     unit: Optional[str] = None
+    sale_price_amount: Optional[float] = Field(None, gt=0)
+    sale_price_quantity: Optional[float] = Field(None, gt=0)
+    sale_currency: Optional[str] = None
+
+
+class InventorySetup(BaseModel):
+    item: str = Field(..., min_length=1, max_length=255)
+    quantity: float = Field(..., ge=0)
+    unit: str = Field(default="pieces", max_length=50)
+    sale_price_amount: float = Field(..., gt=0)
+    sale_price_quantity: float = Field(default=1.0, gt=0)
+    sale_currency: str = "GHS"
+    avg_cost: Optional[float] = Field(None, ge=0)
+    low_stock_threshold: Optional[float] = Field(None, gt=0)
 
 
 # ---------------------------------------------------------------------------

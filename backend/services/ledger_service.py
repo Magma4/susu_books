@@ -100,19 +100,47 @@ class LedgerService:
     ) -> dict[str, object]:
         item = normalize_item_name(args.item)
         unit = normalize_unit_name(args.unit)
-        total_amount = round(args.quantity * args.sale_price, 2)
+        quantity = args.quantity
+        sale_price = args.sale_price
+        pricing_note: Optional[str] = None
+
+        inventory_before_sale = await self.inventory.get_item(item)
+        if (
+            unit == "lot"
+            and quantity == 1
+            and inventory_before_sale is not None
+            and inventory_before_sale.sale_price_amount
+            and inventory_before_sale.sale_price_quantity
+            and sale_price > 0
+        ):
+            quantity = round(
+                (sale_price / inventory_before_sale.sale_price_amount)
+                * inventory_before_sale.sale_price_quantity,
+                4,
+            )
+            if quantity > 0:
+                unit = normalize_unit_name(inventory_before_sale.unit or "pieces")
+                sale_price = round(args.sale_price / quantity, 4)
+                pricing_note = (
+                    f"Inferred from {inventory_before_sale.sale_currency} "
+                    f"{inventory_before_sale.sale_price_amount:g} per "
+                    f"{inventory_before_sale.sale_price_quantity:g} {unit}."
+                )
+
+        total_amount = round(quantity * sale_price, 2)
+        notes = " ".join(part for part in (args.notes, pricing_note) if part)
 
         transaction = Transaction(
             type=TransactionType.sale,
             item=item,
-            quantity=args.quantity,
+            quantity=quantity,
             unit=unit,
-            unit_price=args.sale_price,
+            unit_price=sale_price,
             total_amount=total_amount,
             currency=args.currency,
             counterparty=args.customer,
             category=None,
-            notes=args.notes,
+            notes=notes or None,
             source=source,
             language=language,
             raw_input=raw_input,
@@ -125,8 +153,8 @@ class LedgerService:
 
         inventory, profit = await self.inventory.remove_stock(
             item=item,
-            quantity=args.quantity,
-            sale_price=args.sale_price,
+            quantity=quantity,
+            sale_price=sale_price,
             unit=unit,
         )
 
@@ -136,9 +164,9 @@ class LedgerService:
         return {
             "transaction_id": transaction.id,
             "item": item,
-            "quantity": args.quantity,
+            "quantity": quantity,
             "unit": unit,
-            "sale_price": args.sale_price,
+            "sale_price": sale_price,
             "total_amount": total_amount,
             "currency": args.currency,
             "customer": args.customer,

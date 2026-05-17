@@ -102,6 +102,9 @@ class Inventory(Base):
     avg_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     last_purchase_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     last_sale_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sale_price_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sale_price_quantity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sale_currency: Mapped[str] = mapped_column(String(10), default="GHS", nullable=False)
 
     # Alerting
     low_stock_threshold: Mapped[float] = mapped_column(Float, default=5.0, nullable=False)
@@ -123,6 +126,9 @@ class Inventory(Base):
             "avg_cost": self.avg_cost,
             "last_purchase_price": self.last_purchase_price,
             "last_sale_price": self.last_sale_price,
+            "sale_price_amount": self.sale_price_amount,
+            "sale_price_quantity": self.sale_price_quantity,
+            "sale_currency": self.sale_currency,
             "low_stock_threshold": self.low_stock_threshold,
             "is_low_stock": self.is_low_stock,
             "created_at": self.created_at.isoformat() if self.created_at else None,

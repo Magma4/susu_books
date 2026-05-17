@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from schemas import InventoryOut, InventoryUpdate
+from schemas import InventoryOut, InventorySetup, InventoryUpdate, normalize_currency_code, normalize_unit_name
 from services.inventory_service import InventoryService
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
@@ -35,6 +35,23 @@ async def list_inventory(
     else:
         items = await svc.get_all()
     return [InventoryOut.model_validate(i) for i in items]
+
+
+@router.post("/setup", response_model=InventoryOut, status_code=status.HTTP_201_CREATED)
+async def setup_inventory_item(
+    payload: InventorySetup,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create or replace an inventory item and its sales pricing rule.
+
+    Example: 40 plantains, priced as 8 GHS per 4 pieces. Voice sales can then
+    infer that "plantain 8 cedis" means 4 pieces sold.
+    """
+    svc = InventoryService(db)
+    inv = await svc.setup_item(payload)
+    await db.refresh(inv)
+    return InventoryOut.model_validate(inv)
 
 
 @router.get("/{item_name}", response_model=InventoryOut)
@@ -75,7 +92,21 @@ async def update_inventory_settings(
         inv = await svc.update_threshold(item_name, payload.low_stock_threshold)
 
     if payload.unit is not None:
-        inv.unit = payload.unit
+        inv.unit = normalize_unit_name(payload.unit)
+        inv.updated_at = utcnow()
+        await db.flush()
+        await db.refresh(inv)
+
+    if payload.sale_price_amount is not None:
+        inv.sale_price_amount = payload.sale_price_amount
+    if payload.sale_price_quantity is not None:
+        inv.sale_price_quantity = payload.sale_price_quantity
+    if payload.sale_currency is not None:
+        inv.sale_currency = normalize_currency_code(payload.sale_currency)
+    if any(
+        value is not None
+        for value in (payload.sale_price_amount, payload.sale_price_quantity, payload.sale_currency)
+    ):
         inv.updated_at = utcnow()
         await db.flush()
         await db.refresh(inv)

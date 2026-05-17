@@ -27,11 +27,21 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{BASE_DIR}/susu_books.db"
     db_echo: bool = False  # Set True for SQL query logging
 
+    # AI provider. Use "ollama" for offline local runs or "gemini" for
+    # hosted Gemma/Gemini API calls from Google AI Studio / Cloud Console.
+    ai_provider: str = "ollama"
+
     # Ollama / Gemma 4
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "gemma4:31b-instruct"
     ollama_timeout: int = 300  # seconds
     ollama_max_retries: int = 3
+
+    # Google Gemini API hosted Gemma 4
+    gemini_base_url: str = "https://generativelanguage.googleapis.com"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemma-4-26b-a4b-it"
+    gemini_timeout: int = 120
 
     # AI parameters tuned for extraction consistency rather than prose generation.
     ai_temperature: float = 0.1
@@ -43,7 +53,7 @@ class Settings(BaseSettings):
     default_language: str = "en"
 
     # Supported languages (ISO 639-1 codes + locale variants)
-    supported_languages: list[str] = Field(
+    supported_languages: Any = Field(
         default_factory=lambda: ["en", "tw", "ha", "pcm", "sw"]
     )
 
@@ -51,7 +61,7 @@ class Settings(BaseSettings):
     default_low_stock_threshold: float = 5.0
 
     # CORS — allow frontend dev server
-    cors_origins: list[str] = Field(
+    cors_origins: Any = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
@@ -59,7 +69,7 @@ class Settings(BaseSettings):
             "http://127.0.0.1:3001",
         ]
     )
-    allowed_hosts: list[str] = Field(
+    allowed_hosts: Any = Field(
         default_factory=lambda: ["localhost", "127.0.0.1", "*.localhost", "testserver"]
     )
 

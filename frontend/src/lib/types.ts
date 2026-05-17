@@ -35,10 +35,24 @@ export interface InventoryItem {
   avg_cost?: number;
   last_purchase_price?: number;
   last_sale_price?: number;
+  sale_price_amount?: number;
+  sale_price_quantity?: number;
+  sale_currency?: string;
   low_stock_threshold: number;
   is_low_stock: boolean;
   created_at?: string;
   updated_at: string;
+}
+
+export interface InventorySetupPayload {
+  item: string;
+  quantity: number;
+  unit: string;
+  sale_price_amount: number;
+  sale_price_quantity: number;
+  sale_currency?: string;
+  avg_cost?: number;
+  low_stock_threshold?: number;
 }
 
 // ---------------------------------------------------------------------------

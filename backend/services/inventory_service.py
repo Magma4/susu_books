@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_settings
 from models import Inventory, Transaction
-from schemas import TransactionType, normalize_item_name, normalize_unit_name
+from schemas import InventorySetup, TransactionType, normalize_currency_code, normalize_item_name, normalize_unit_name
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -44,6 +44,9 @@ class InventoryService:
                 avg_cost=None,
                 last_purchase_price=None,
                 last_sale_price=None,
+                sale_price_amount=None,
+                sale_price_quantity=None,
+                sale_currency=settings.default_currency,
                 low_stock_threshold=settings.default_low_stock_threshold,
                 is_low_stock=True,
                 created_at=utcnow(),
@@ -71,9 +74,29 @@ class InventoryService:
             "avg_cost": round(inventory.avg_cost, 4) if inventory.avg_cost is not None else None,
             "last_purchase_price": inventory.last_purchase_price,
             "last_sale_price": inventory.last_sale_price,
+            "sale_price_amount": inventory.sale_price_amount,
+            "sale_price_quantity": inventory.sale_price_quantity,
+            "sale_currency": inventory.sale_currency,
             "low_stock_threshold": inventory.low_stock_threshold,
             "status": status,
         }
+
+    async def setup_item(self, payload: InventorySetup) -> Inventory:
+        inventory = await self._get_or_create(payload.item, payload.unit)
+        inventory.quantity = round(payload.quantity, 4)
+        inventory.unit = normalize_unit_name(payload.unit)
+        inventory.sale_price_amount = round(payload.sale_price_amount, 4)
+        inventory.sale_price_quantity = round(payload.sale_price_quantity, 4)
+        inventory.sale_currency = normalize_currency_code(payload.sale_currency)
+        if payload.avg_cost is not None:
+            inventory.avg_cost = round(payload.avg_cost, 4)
+            inventory.last_purchase_price = round(payload.avg_cost, 4)
+        if payload.low_stock_threshold is not None:
+            inventory.low_stock_threshold = payload.low_stock_threshold
+        inventory.updated_at = utcnow()
+        self._update_status(inventory)
+        await self.db.flush()
+        return inventory
 
     async def add_stock(
         self,
