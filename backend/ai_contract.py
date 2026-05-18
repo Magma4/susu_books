@@ -30,6 +30,11 @@ RULES:
 10. If the user asks a question about their business ("how did I do today", "what do I have in stock", etc.), call the appropriate query function.
 11. If the input is truly unintelligible, call clarify_input() - but try hard to extract meaning first.
 12. Currency defaults: GHS (Ghana), NGN (Nigeria), KES (Kenya), XOF (West Africa CFA)
+13. IOS SIRI PHONETIC AUTOCORRECTS: When users speak Twi on iPhones, Apple's English dictation forcefully autocorrects it into bizarre English gibberish. You must act as a phonetic detective to recover the Twi:
+   - "cities" or "series" -> SOUNDS LIKE "cedis" (currency)
+   - "Tomato" or "metal" -> SOUNDS LIKE "Me tɔ" (I am buying/selling)
+   - "Rodeo" -> SOUNDS LIKE "nku" (shea butter) or "red"
+   If a phrase makes no business sense (e.g. "Tomato cake two cities", "metal Rodeo three cities"), read it phonetically: it means "Me tɔ cake 2 cedis" (Sale: cake, 2 cedis).
 
 EXAMPLES OF MULTILINGUAL EXTRACTION:
 
