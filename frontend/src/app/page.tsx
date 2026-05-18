@@ -28,7 +28,7 @@ import ChatBubble from "@/components/ChatBubble";
 import LanguageSelector from "@/components/LanguageSelector";
 import OllamaOfflineScreen from "@/components/OllamaOfflineScreen";
 import DemoMode from "@/components/DemoMode";
-import PinAuthScreen from "@/components/PinAuthScreen";
+import PinAuthScreen, { type TraderProfile } from "@/components/PinAuthScreen";
 
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoiceOutput } from "@/hooks/useVoiceOutput";
@@ -75,7 +75,7 @@ export default function HomePage() {
   // State
   // ---------------------------------------------------------------------------
   const [language, setLanguage] = useState<LanguageCode>("en");
-  const [isLocked, setIsLocked] = useState(true);
+  const [activeProfile, setActiveProfile] = useState<TraderProfile | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isProcessingChat, setIsProcessingChat] = useState(false);
   const [textInput, setTextInput] = useState("");
@@ -538,10 +538,13 @@ export default function HomePage() {
     );
   }
 
-  if (isLocked) {
+  if (!activeProfile) {
     return (
       <PinAuthScreen
-        onUnlock={() => setIsLocked(false)}
+        onUnlock={(profile) => {
+          setActiveProfile(profile);
+          addToast("success", `Welcome back, ${profile.name}!`);
+        }}
         businessName={isDemoMode ? "Ama's Market Stall" : "Susu Books"}
       />
     );
@@ -626,24 +629,29 @@ export default function HomePage() {
             </button>
 
             {/* Lock App button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof navigator !== "undefined" && navigator.vibrate) {
-                  navigator.vibrate(20);
-                }
-                setIsLocked(true);
-                addToast("info", "Ledger locked securely.");
-              }}
-              className="
-                h-8 w-8 rounded-full border border-border flex items-center justify-center flex-shrink-0
-                text-text-secondary hover:border-danger hover:text-danger transition-colors
-              "
-              title="Lock dashboard"
-              aria-label="Lock dashboard"
-            >
-              <LockIcon />
-            </button>
+            <div className="flex items-center gap-1 bg-background border border-border pl-3 pr-1 py-1 rounded-full ml-2">
+              <span className="text-xs font-semibold text-text-primary hidden sm:block">
+                {activeProfile.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof navigator !== "undefined" && navigator.vibrate) {
+                    navigator.vibrate(20);
+                  }
+                  setActiveProfile(null);
+                  addToast("info", "Ledger locked securely.");
+                }}
+                className="
+                  h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0
+                  text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors
+                "
+                title="Lock dashboard"
+                aria-label="Lock dashboard"
+              >
+                <LockIcon />
+              </button>
+            </div>
 
             <LanguageSelector value={language} onChange={setLanguage} />
           </div>
