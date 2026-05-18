@@ -53,6 +53,9 @@ AVAILABLE_LANGUAGES: list[LanguageInfo] = [
     LanguageInfo(code="ha", name="Hausa", native_name="Hausa"),
     LanguageInfo(code="pcm", name="Pidgin English", native_name="Pidgin"),
     LanguageInfo(code="sw", name="Swahili", native_name="Kiswahili"),
+    LanguageInfo(code="fr", name="French", native_name="Français"),
+    LanguageInfo(code="pt", name="Portuguese", native_name="Português"),
+    LanguageInfo(code="es", name="Spanish", native_name="Español"),
 ]
 
 

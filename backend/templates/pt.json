@@ -1,0 +1,23 @@
+{
+  "purchase_confirmed": "Registado. {quantity} {unit} de {item} por {currency} {total_amount}. Stock: {new_stock_level} {unit}.",
+  "purchase_confirmed_with_supplier": "Registado. {quantity} {unit} de {item} de {supplier} por {currency} {total_amount}. Stock: {new_stock_level} {unit}.",
+  "sale_confirmed": "Registado. Venda de {quantity} {unit} de {item} por {currency} {total_amount}. Lucro: {currency} {profit}. Stock: {remaining_stock} {unit}.",
+  "sale_low_stock_warning": "Venda registada. Atenção: só restam {remaining_stock} {unit} de {item}.",
+  "sale_out_of_stock": "Venda registada. Atenção: {item} está sem stock. Reponha em breve.",
+  "expense_confirmed": "Registado. Despesa de {category}: {currency} {amount}. Total de despesas hoje: {currency} {total_expenses_today}.",
+  "inventory_single": "{item}: {quantity} {unit} em stock. Custo médio: {currency} {avg_cost} por {unit}.",
+  "inventory_low": "Alerta de stock baixo. {item}: só restam {quantity} {unit}.",
+  "inventory_out": "{item} está SEM STOCK.",
+  "inventory_all_header": "O seu stock:",
+  "inventory_item_line": "  {item}: {quantity} {unit} ({status})",
+  "inventory_empty": "Ainda não tem nenhum stock.",
+  "daily_summary": "Hoje: vendas {currency} {total_revenue}, custos {currency} {total_cost}, despesas {currency} {total_expenses}. Lucro: {currency} {net_profit}. {transaction_count} transações. Mais vendido: {top_selling_item}.",
+  "daily_summary_comparison_up": "Isto é {profit_change_pct}% mais do que ontem!",
+  "daily_summary_comparison_down": "Isto é {profit_change_pct}% menos do que ontem.",
+  "weekly_report": "Esta semana: lucro total {currency} {total_profit}. Média {currency} {avg_daily_profit}/dia. Melhor dia: {best_day}. {total_transactions} transações.",
+  "credit_profile": "Nos últimos {period_days} dias: receita média diária {currency} {avg_daily_revenue}, lucro médio diário {currency} {avg_daily_profit}, dias ativos {active_days}, pontuação de consistência {consistency_score}. Nível de risco: {risk_level}.",
+  "clarify": "Não entendi bem. Pode repetir?",
+  "photo_unclear": "Não consegui ler claramente uma transação nessa imagem. Tente outra foto.",
+  "error": "Algo correu mal. Tente novamente.",
+  "welcome": "Bem-vindo ao Susu Books! Toque no botão verde e fale-me sobre o seu negócio."
+}

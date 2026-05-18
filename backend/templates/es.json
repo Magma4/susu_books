@@ -1,0 +1,23 @@
+{
+  "purchase_confirmed": "Registrado. {quantity} {unit} de {item} por {currency} {total_amount}. Inventario: {new_stock_level} {unit}.",
+  "purchase_confirmed_with_supplier": "Registrado. {quantity} {unit} de {item} de {supplier} por {currency} {total_amount}. Inventario: {new_stock_level} {unit}.",
+  "sale_confirmed": "Registrado. Vendiste {quantity} {unit} de {item} por {currency} {total_amount}. Ganancia: {currency} {profit}. Inventario: {remaining_stock} {unit}.",
+  "sale_low_stock_warning": "Venta registrada. Atención: solo quedan {remaining_stock} {unit} de {item}.",
+  "sale_out_of_stock": "Venta registrada. Atención: {item} ya no tiene inventario. Repón pronto.",
+  "expense_confirmed": "Registrado. Gasto de {category}: {currency} {amount}. Gastos totales de hoy: {currency} {total_expenses_today}.",
+  "inventory_single": "{item}: {quantity} {unit} en inventario. Costo promedio: {currency} {avg_cost} por {unit}.",
+  "inventory_low": "Alerta de bajo inventario. {item}: solo quedan {quantity} {unit}.",
+  "inventory_out": "{item} está SIN INVENTARIO.",
+  "inventory_all_header": "Tu inventario:",
+  "inventory_item_line": "  {item}: {quantity} {unit} ({status})",
+  "inventory_empty": "Todavía no tienes inventario.",
+  "daily_summary": "Hoy: ventas {currency} {total_revenue}, costos {currency} {total_cost}, gastos {currency} {total_expenses}. Ganancia: {currency} {net_profit}. {transaction_count} transacciones. Más vendido: {top_selling_item}.",
+  "daily_summary_comparison_up": "¡Eso es {profit_change_pct}% más que ayer!",
+  "daily_summary_comparison_down": "Eso es {profit_change_pct}% menos que ayer.",
+  "weekly_report": "Esta semana: ganancia total {currency} {total_profit}. Promedio {currency} {avg_daily_profit}/día. Mejor día: {best_day}. {total_transactions} transacciones.",
+  "credit_profile": "En los últimos {period_days} días: ingreso diario promedio {currency} {avg_daily_revenue}, ganancia diaria promedio {currency} {avg_daily_profit}, días activos {active_days}, puntuación de constancia {consistency_score}. Nivel de riesgo: {risk_level}.",
+  "clarify": "No entendí bien. ¿Puedes repetirlo?",
+  "photo_unclear": "No pude leer claramente una transacción en esa imagen. Intenta con otra foto.",
+  "error": "Algo salió mal. Inténtalo de nuevo.",
+  "welcome": "¡Bienvenido a Susu Books! Toca el botón verde y cuéntame sobre tu negocio."
+}

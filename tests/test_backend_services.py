@@ -280,6 +280,20 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
         self.assertIn("Recorded.", rendered)
         self.assertIn("rice", rendered)
 
+    async def test_all_language_templates_match_english_keys(self) -> None:
+        templates_dir = BACKEND_DIR / "templates"
+        with (templates_dir / "en.json").open("r", encoding="utf-8") as handle:
+            english_keys = set(json.load(handle))
+
+        for template_path in sorted(templates_dir.glob("*.json")):
+            with template_path.open("r", encoding="utf-8") as handle:
+                language_keys = set(json.load(handle))
+            self.assertEqual(
+                english_keys,
+                language_keys,
+                f"{template_path.name} should define the same response templates as en.json",
+            )
+
 
 class GemmaFallbackTests(AsyncDatabaseTestCase):
     async def test_known_twi_sale_uses_rule_fallback_without_waiting_for_model(self) -> None:
@@ -385,6 +399,22 @@ class RuleExtractionTests(unittest.TestCase):
         self.assertEqual(calls[0]["function"]["name"], "record_sale")
         self.assertEqual(calls[0]["function"]["arguments"]["item"], "onions")
         self.assertEqual(calls[0]["function"]["arguments"]["sale_price"], 10.0)
+
+    def test_latin_language_item_aliases_default_to_sales(self) -> None:
+        extractor = RuleExtractionService()
+
+        examples = [
+            ("vendí cebollas 10 GHS", "onions", 10.0),
+            ("vendi cebola 10 GHS", "onions", 10.0),
+            ("j'ai vendu oignons 10 GHS", "onions", 10.0),
+        ]
+
+        for utterance, item, amount in examples:
+            with self.subTest(utterance=utterance):
+                calls = extractor.extract(utterance)
+                self.assertEqual(calls[0]["function"]["name"], "record_sale")
+                self.assertEqual(calls[0]["function"]["arguments"]["item"], item)
+                self.assertEqual(calls[0]["function"]["arguments"]["sale_price"], amount)
 
 
 class ExportRouterTests(AsyncDatabaseTestCase):

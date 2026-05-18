@@ -143,7 +143,7 @@ export interface ImageChatResponse extends ChatResponse {
 // Language configuration
 // ---------------------------------------------------------------------------
 
-export type LanguageCode = "en" | "tw" | "ha" | "pcm" | "sw";
+export type LanguageCode = "en" | "tw" | "ha" | "pcm" | "sw" | "fr" | "pt" | "es";
 
 export interface LanguageConfig {
   code: LanguageCode;
@@ -190,6 +190,27 @@ export const LANGUAGES: LanguageConfig[] = [
     nativeName: "Kiswahili",
     speechCode: "sw-KE",
     synthesisCode: "sw-KE",
+  },
+  {
+    code: "fr",
+    name: "French",
+    nativeName: "Français",
+    speechCode: "fr-FR",
+    synthesisCode: "fr-FR",
+  },
+  {
+    code: "pt",
+    name: "Portuguese",
+    nativeName: "Português",
+    speechCode: "pt-PT",
+    synthesisCode: "pt-PT",
+  },
+  {
+    code: "es",
+    name: "Spanish",
+    nativeName: "Español",
+    speechCode: "es-ES",
+    synthesisCode: "es-ES",
   },
 ];
 

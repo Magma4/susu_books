@@ -1,0 +1,23 @@
+{
+  "purchase_confirmed": "Enregistré. {quantity} {unit} de {item} pour {currency} {total_amount}. Stock : {new_stock_level} {unit}.",
+  "purchase_confirmed_with_supplier": "Enregistré. {quantity} {unit} de {item} auprès de {supplier} pour {currency} {total_amount}. Stock : {new_stock_level} {unit}.",
+  "sale_confirmed": "Enregistré. Vente de {quantity} {unit} de {item} pour {currency} {total_amount}. Bénéfice : {currency} {profit}. Stock : {remaining_stock} {unit}.",
+  "sale_low_stock_warning": "Vente enregistrée. Attention : il ne reste que {remaining_stock} {unit} de {item} !",
+  "sale_out_of_stock": "Vente enregistrée. Attention : {item} est maintenant en rupture de stock ! Réapprovisionnez vite.",
+  "expense_confirmed": "Enregistré. Dépense {category} : {currency} {amount}. Dépenses totales aujourd'hui : {currency} {total_expenses_today}.",
+  "inventory_single": "{item} : {quantity} {unit} en stock. Coût moyen : {currency} {avg_cost} par {unit}.",
+  "inventory_low": "Alerte stock bas ! {item} : seulement {quantity} {unit} restants.",
+  "inventory_out": "{item} est EN RUPTURE DE STOCK.",
+  "inventory_all_header": "Votre stock :",
+  "inventory_item_line": "  {item} : {quantity} {unit} ({status})",
+  "inventory_empty": "Vous n'avez pas encore de stock.",
+  "daily_summary": "Aujourd'hui : ventes {currency} {total_revenue}, coûts {currency} {total_cost}, dépenses {currency} {total_expenses}. Bénéfice : {currency} {net_profit}. {transaction_count} transactions. Meilleure vente : {top_selling_item}.",
+  "daily_summary_comparison_up": "C'est {profit_change_pct}% de plus qu'hier !",
+  "daily_summary_comparison_down": "C'est {profit_change_pct}% de moins qu'hier.",
+  "weekly_report": "Cette semaine : bénéfice total {currency} {total_profit}. Moyenne {currency} {avg_daily_profit}/jour. Meilleur jour : {best_day}. {total_transactions} transactions.",
+  "credit_profile": "Sur les {period_days} derniers jours : revenu moyen par jour {currency} {avg_daily_revenue}, bénéfice moyen par jour {currency} {avg_daily_profit}, jours actifs {active_days}, score de régularité {consistency_score}. Niveau de risque : {risk_level}.",
+  "clarify": "Je n'ai pas bien compris. Pouvez-vous répéter ?",
+  "photo_unclear": "Je n'ai pas pu lire clairement une transaction sur cette image. Veuillez essayer une autre photo.",
+  "error": "Une erreur s'est produite. Veuillez réessayer.",
+  "welcome": "Bienvenue sur Susu Books ! Appuyez sur le bouton vert et parlez-moi de votre commerce."
+}

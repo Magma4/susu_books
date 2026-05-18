@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 
     # Supported languages (ISO 639-1 codes + locale variants)
     supported_languages: Any = Field(
-        default_factory=lambda: ["en", "tw", "ha", "pcm", "sw"]
+        default_factory=lambda: ["en", "tw", "ha", "pcm", "sw", "fr", "pt", "es"]
     )
 
     # Inventory
