@@ -568,52 +568,8 @@ export default function HomePage() {
 
           {/* Right controls */}
           <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-none pb-1 -mb-1 max-w-[65vw] sm:max-w-none">
-            {/* Backend status dot */}
-            <div
-              className={`h-2 w-2 rounded-full flex-shrink-0 transition-colors duration-500 ${
-                backendOnline ? "bg-primary-light" : "bg-warning animate-pulse"
-              }`}
-              title={
-                backendOnline
-                  ? `${healthState.aiProvider === "gemini" ? "Google Gemini API" : "Ollama"} online`
-                  : "AI offline"
-              }
-            />
-
-            <button
-              type="button"
-              onClick={() => setVoiceRepliesEnabled((v) => !v)}
-              className={`
-                h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 rounded-full border flex items-center justify-center transition-colors
-                ${
-                  voiceRepliesEnabled
-                    ? "border-primary-900 bg-primary-surface text-primary-900"
-                    : "border-border text-text-secondary hover:border-text-secondary"
-                }
-              `}
-              title={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
-              aria-label={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
-            >
-              <div className="scale-75 sm:scale-100">
-                {voiceRepliesEnabled ? <SpeakerIcon /> : <MutedSpeakerIcon />}
-              </div>
-            </button>
-
-            {/* Demo mode toggle */}
-            <button
-              onClick={() => setIsDemoMode((v) => !v)}
-              className={`
-                text-[10px] sm:text-xs font-semibold px-2 py-1 flex-shrink-0 rounded-full border transition-all duration-200
-                ${
-                  isDemoMode
-                    ? "bg-accent-800 text-white border-accent-800"
-                    : "border-border text-text-secondary hover:border-accent-800 hover:text-accent-800"
-                }
-              `}
-              title="Toggle demo mode"
-            >
-              Demo
-            </button>
+            <LanguageSelector value={language} onChange={setLanguage} />
+            <CurrencySelector value={currency} onChange={setCurrency} />
 
             {/* Lock App button */}
             <div className="flex items-center gap-1 bg-background border border-border pl-1.5 sm:pl-3 pr-1 py-1 flex-shrink-0 rounded-full">
@@ -640,8 +596,52 @@ export default function HomePage() {
               </button>
             </div>
 
-            <CurrencySelector value={currency} onChange={setCurrency} />
-            <LanguageSelector value={language} onChange={setLanguage} />
+            {/* Demo mode toggle */}
+            <button
+              onClick={() => setIsDemoMode((v) => !v)}
+              className={`
+                text-[10px] sm:text-xs font-semibold px-2 py-1 flex-shrink-0 rounded-full border transition-all duration-200
+                ${
+                  isDemoMode
+                    ? "bg-accent-800 text-white border-accent-800"
+                    : "border-border text-text-secondary hover:border-accent-800 hover:text-accent-800"
+                }
+              `}
+              title="Toggle demo mode"
+            >
+              Demo
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setVoiceRepliesEnabled((v) => !v)}
+              className={`
+                h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 rounded-full border flex items-center justify-center transition-colors
+                ${
+                  voiceRepliesEnabled
+                    ? "border-primary-900 bg-primary-surface text-primary-900"
+                    : "border-border text-text-secondary hover:border-text-secondary"
+                }
+              `}
+              title={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
+              aria-label={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
+            >
+              <div className="scale-75 sm:scale-100">
+                {voiceRepliesEnabled ? <SpeakerIcon /> : <MutedSpeakerIcon />}
+              </div>
+            </button>
+
+            {/* Backend status dot */}
+            <div
+              className={`h-2 w-2 rounded-full flex-shrink-0 transition-colors duration-500 ${
+                backendOnline ? "bg-primary-light" : "bg-warning animate-pulse"
+              }`}
+              title={
+                backendOnline
+                  ? `${healthState.aiProvider === "gemini" ? "Google Gemini API" : "Ollama"} online`
+                  : "AI offline"
+              }
+            />
           </div>
         </div>
       </header>
