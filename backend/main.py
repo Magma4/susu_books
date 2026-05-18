@@ -21,9 +21,7 @@ from config import get_settings
 from database import create_tables
 from routers import ai, exports, inventory, reports, transactions
 
-# ---------------------------------------------------------------------------
 # Logging
-# ---------------------------------------------------------------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,9 +32,7 @@ logger = logging.getLogger("susu_books")
 
 settings = get_settings()
 
-# ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
-# ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,9 +49,7 @@ async def lifespan(app: FastAPI):
     logger.info("Susu Books backend shutting down.")
 
 
-# ---------------------------------------------------------------------------
 # App factory
-# ---------------------------------------------------------------------------
 
 def create_app() -> FastAPI:
     docs_enabled = settings.api_docs_enabled
@@ -74,9 +68,7 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json" if docs_enabled else None,
     )
 
-    # ------------------------------------------------------------------
     # CORS
-    # ------------------------------------------------------------------
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -150,9 +142,7 @@ def create_app() -> FastAPI:
 
         return await call_next(request)
 
-    # ------------------------------------------------------------------
     # HTTP exception handler
-    # ------------------------------------------------------------------
     @app.exception_handler(HTTPException)
     async def http_exception_handler(_request: Request, exc: HTTPException):
         detail = exc.detail if isinstance(exc.detail, str) else "Request failed."
@@ -165,9 +155,7 @@ def create_app() -> FastAPI:
             },
         )
 
-    # ------------------------------------------------------------------
     # Validation exception handler
-    # ------------------------------------------------------------------
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(_request: Request, exc: RequestValidationError):
         return JSONResponse(
@@ -180,9 +168,7 @@ def create_app() -> FastAPI:
             },
         )
 
-    # ------------------------------------------------------------------
     # Global exception handler
-    # ------------------------------------------------------------------
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         logger.exception("Unhandled exception on %s %s", request.method, request.url)
@@ -195,18 +181,14 @@ def create_app() -> FastAPI:
             },
         )
 
-    # ------------------------------------------------------------------
     # Routers
-    # ------------------------------------------------------------------
     app.include_router(ai.router)
     app.include_router(transactions.router)
     app.include_router(inventory.router)
     app.include_router(reports.router)
     app.include_router(exports.router)
 
-    # ------------------------------------------------------------------
     # Root & Health check endpoints
-    # ------------------------------------------------------------------
     @app.get("/", tags=["root"])
     async def root():
         return {
@@ -227,9 +209,7 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-# ---------------------------------------------------------------------------
 # Run directly (development)
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     import uvicorn

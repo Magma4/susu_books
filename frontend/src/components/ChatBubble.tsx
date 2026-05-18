@@ -55,9 +55,7 @@ export default function ChatBubble({ messages, isTyping }: ChatBubbleProps) {
   );
 }
 
-// ---------------------------------------------------------------------------
 // Sub-components
-// ---------------------------------------------------------------------------
 
 function MessageRow({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";

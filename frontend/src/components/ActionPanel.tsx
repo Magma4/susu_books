@@ -145,9 +145,7 @@ export default function ActionPanel({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Sub-components
-// ---------------------------------------------------------------------------
 
 interface AlertCardProps {
   type: "error" | "warning" | "info" | "success";

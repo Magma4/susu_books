@@ -15,9 +15,7 @@ import type {
   InventoryAlerts,
 } from "@/lib/types";
 
-// ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
 
 export interface ApiState {
   transactions: Transaction[];
@@ -44,9 +42,7 @@ export interface UseApiReturn extends ApiState {
 // Polling interval in milliseconds (30 seconds)
 const POLL_INTERVAL_MS = 30_000;
 
-// ---------------------------------------------------------------------------
 // Hook
-// ---------------------------------------------------------------------------
 
 export function useApi(): UseApiReturn {
   const [state, setState] = useState<ApiState>({
@@ -92,9 +88,7 @@ export function useApi(): UseApiReturn {
     [safeSet]
   );
 
-  // ---------------------------------------------------------------------------
   // Individual fetchers (non-throwing — errors stored in state)
-  // ---------------------------------------------------------------------------
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -163,9 +157,7 @@ export function useApi(): UseApiReturn {
     }
   }, [safeSet]);
 
-  // ---------------------------------------------------------------------------
   // Composite refresh methods
-  // ---------------------------------------------------------------------------
 
   const refreshToday = useCallback(async () => {
     await Promise.allSettled([fetchTransactions(), fetchDailySummary(), fetchInventory()]);
@@ -190,9 +182,7 @@ export function useApi(): UseApiReturn {
     safeSet,
   ]);
 
-  // ---------------------------------------------------------------------------
   // Ingest transactions from chat responses (add to front of feed)
-  // ---------------------------------------------------------------------------
 
   const ingestTransactions = useCallback(
     (newTxns: Transaction[]) => {
@@ -215,9 +205,7 @@ export function useApi(): UseApiReturn {
     [safeSet, fetchDailySummary, fetchInventory]
   );
 
-  // ---------------------------------------------------------------------------
   // Lifecycle: initial load + polling
-  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     mountedRef.current = true;

@@ -94,9 +94,7 @@ export default function OllamaOfflineScreen({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Steps sub-components
-// ---------------------------------------------------------------------------
 
 function OllamaSetupSteps({
   copyCmd,

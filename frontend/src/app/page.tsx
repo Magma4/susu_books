@@ -58,23 +58,17 @@ function makeId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-// ---------------------------------------------------------------------------
 // Toast notification type
-// ---------------------------------------------------------------------------
 interface Toast {
   id: string;
   type: "success" | "error" | "info" | "warning";
   message: string;
 }
 
-// ---------------------------------------------------------------------------
 // Component
-// ---------------------------------------------------------------------------
 
 export default function HomePage() {
-  // ---------------------------------------------------------------------------
   // State
-  // ---------------------------------------------------------------------------
   const [language, setLanguage] = useState<LanguageCode>("en");
   const [currency, setCurrency] = useState("GHS");
   const [activeProfile, setActiveProfile] = useState<TraderProfile | null>(null);
@@ -108,9 +102,7 @@ export default function HomePage() {
   const toastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const speechNoticeRef = useRef<Set<string>>(new Set());
 
-  // ---------------------------------------------------------------------------
   // API data
-  // ---------------------------------------------------------------------------
   const {
     transactions,
     inventory,
@@ -124,9 +116,7 @@ export default function HomePage() {
     refreshAll,
   } = useApi();
 
-  // ---------------------------------------------------------------------------
   // Health check (initial + manual retry)
-  // ---------------------------------------------------------------------------
   const checkHealth = useCallback(async (): Promise<HealthStatus | null> => {
     try {
       const health = await getHealth();
@@ -163,9 +153,7 @@ export default function HomePage() {
     setIsRetryingHealth(false);
   }, [checkHealth, refreshAll]);
 
-  // ---------------------------------------------------------------------------
   // Toast notifications
-  // ---------------------------------------------------------------------------
   const addToast = useCallback(
     (type: Toast["type"], message: string, duration = 4000) => {
       const id = makeId();
@@ -218,9 +206,7 @@ export default function HomePage() {
     }
   }, [addToast, backendOnline]);
 
-  // ---------------------------------------------------------------------------
   // Speech synthesis
-  // ---------------------------------------------------------------------------
   const langConfig = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
 
   const {
@@ -282,9 +268,7 @@ export default function HomePage() {
     ]
   );
 
-  // ---------------------------------------------------------------------------
   // Core: process a message through the AI pipeline
-  // ---------------------------------------------------------------------------
   const processMessage = useCallback(
     async (message: string) => {
       if (!message.trim()) return;
@@ -371,9 +355,7 @@ export default function HomePage() {
     [chatMessages, language, ingestTransactions, speakReply, backendOnline, addToast]
   );
 
-  // ---------------------------------------------------------------------------
   // Voice input
-  // ---------------------------------------------------------------------------
   const handleVoiceFinal = useCallback(
     (transcript: string) => {
       if (!transcript.trim()) return;
@@ -440,9 +422,7 @@ export default function HomePage() {
     }
   }, [isProcessingChat, voiceState, reset]);
 
-  // ---------------------------------------------------------------------------
   // Image/OCR handler
-  // ---------------------------------------------------------------------------
   const handleImageResponse = useCallback(
     (res: ImageChatResponse) => {
       const aiMsg: ChatMessage = {
@@ -487,9 +467,7 @@ export default function HomePage() {
     [addToast]
   );
 
-  // ---------------------------------------------------------------------------
   // Text input submit
-  // ---------------------------------------------------------------------------
   const handleTextSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -509,9 +487,7 @@ export default function HomePage() {
     }
   }, [showTextInput]);
 
-  // ---------------------------------------------------------------------------
   // Offline screen logic
-  // ---------------------------------------------------------------------------
   const isFullyOffline =
     healthState.checked && !healthState.backendReachable;
 
@@ -552,9 +528,7 @@ export default function HomePage() {
     );
   }
 
-  // ---------------------------------------------------------------------------
   // Render — main dashboard
-  // ---------------------------------------------------------------------------
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden">
 
@@ -922,9 +896,7 @@ export default function HomePage() {
   );
 }
 
-// ---------------------------------------------------------------------------
 // Toast item component
-// ---------------------------------------------------------------------------
 
 function ToastItem({
   toast,
@@ -963,9 +935,7 @@ function ToastItem({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Error message helpers
-// ---------------------------------------------------------------------------
 
 function buildUserFriendlyError(e: unknown): string {
   if (!e) return "Something went wrong. Please try again.";
@@ -986,9 +956,7 @@ function buildUserFriendlyError(e: unknown): string {
   return msg.length > 120 ? msg.slice(0, 117) + "…" : msg;
 }
 
-// ---------------------------------------------------------------------------
 // Inline icons
-// ---------------------------------------------------------------------------
 
 function BookIcon() {
   return (

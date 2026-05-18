@@ -11,9 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// ---------------------------------------------------------------------------
 // Demo script — Ama's Wednesday morning in Makola Market, Accra
-// ---------------------------------------------------------------------------
 
 export interface DemoStep {
   message: string;
@@ -63,9 +61,7 @@ export const AMA_DEMO_SCRIPT: DemoStep[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
 // Component
-// ---------------------------------------------------------------------------
 
 interface DemoModeProps {
   /** Called for each scripted message — same as real voice/text handler */
@@ -93,9 +89,7 @@ export default function DemoMode({ onMessage, onComplete }: DemoModeProps) {
     }
   }, []);
 
-  // ---------------------------------------------------------------------------
   // Type a single character at a time
-  // ---------------------------------------------------------------------------
   const typeMessage = useCallback(
     (
       message: string,
@@ -120,9 +114,7 @@ export default function DemoMode({ onMessage, onComplete }: DemoModeProps) {
     []
   );
 
-  // ---------------------------------------------------------------------------
   // Run one step
-  // ---------------------------------------------------------------------------
   const runStep = useCallback(
     async (stepIndex: number) => {
       if (abortRef.current || stepIndex >= AMA_DEMO_SCRIPT.length) {
@@ -176,9 +168,7 @@ export default function DemoMode({ onMessage, onComplete }: DemoModeProps) {
     [typeMessage, onMessage, onComplete]
   );
 
-  // ---------------------------------------------------------------------------
   // Start / stop
-  // ---------------------------------------------------------------------------
   const start = useCallback(() => {
     abortRef.current = false;
     setIsRunning(true);
@@ -212,9 +202,7 @@ export default function DemoMode({ onMessage, onComplete }: DemoModeProps) {
   const step = AMA_DEMO_SCRIPT[currentStep];
   const progressPct = ((currentStep + (demoState === "complete" ? 1 : 0)) / AMA_DEMO_SCRIPT.length) * 100;
 
-  // ---------------------------------------------------------------------------
   // Render
-  // ---------------------------------------------------------------------------
   return (
     <div className="w-full">
       {/* Demo toggle button (shown when not running) */}

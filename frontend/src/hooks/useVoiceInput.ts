@@ -271,9 +271,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   };
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function getErrorMessage(errorCode: string): string {
   const messages: Record<string, string> = {

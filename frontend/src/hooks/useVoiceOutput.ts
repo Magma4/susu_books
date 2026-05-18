@@ -139,9 +139,7 @@ export function useVoiceOutput(
   };
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Build a language → best voice mapping from available voices.

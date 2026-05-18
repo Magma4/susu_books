@@ -208,9 +208,7 @@ def normalize_currency_code(value: Any) -> str:
     return CURRENCY_ALIASES.get(normalized, normalized.upper() or "GHS")
 
 
-# ---------------------------------------------------------------------------
 # Enums
-# ---------------------------------------------------------------------------
 
 class TransactionType(str, Enum):
     purchase = "purchase"
@@ -236,9 +234,7 @@ class ExpenseCategory(str, Enum):
     other = "other"
 
 
-# ---------------------------------------------------------------------------
 # Transaction Schemas
-# ---------------------------------------------------------------------------
 
 class TransactionBase(BaseModel):
     type: TransactionType
@@ -281,9 +277,7 @@ class TransactionOut(TransactionBase):
     model_config = {"from_attributes": True}
 
 
-# ---------------------------------------------------------------------------
 # Inventory Schemas
-# ---------------------------------------------------------------------------
 
 class InventoryOut(BaseModel):
     id: int
@@ -326,9 +320,7 @@ class InventorySetup(BaseModel):
     low_stock_threshold: Optional[float] = Field(None, gt=0)
 
 
-# ---------------------------------------------------------------------------
 # Daily Summary Schema
-# ---------------------------------------------------------------------------
 
 class DailySummaryOut(BaseModel):
     id: int
@@ -345,9 +337,7 @@ class DailySummaryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ---------------------------------------------------------------------------
 # AI / Chat Schemas
-# ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=5000)
@@ -382,9 +372,7 @@ class ImageChatResponse(BaseModel):
     raw_ocr_text: Optional[str] = None
 
 
-# ---------------------------------------------------------------------------
 # Report Schemas
-# ---------------------------------------------------------------------------
 
 class DailyReportRequest(BaseModel):
     date: Optional[str] = Field(
@@ -450,9 +438,7 @@ class LanguageInfo(BaseModel):
     native_name: str
 
 
-# ---------------------------------------------------------------------------
 # Gemma Function Call Payloads (used internally by gemma_service)
-# ---------------------------------------------------------------------------
 
 class RecordPurchaseArgs(BaseModel):
     item: str

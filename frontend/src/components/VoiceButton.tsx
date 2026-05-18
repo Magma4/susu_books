@@ -93,9 +93,7 @@ export default function VoiceButton({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Transcript Display — Rendered above the buttons in page.tsx for layout elegance
-// ---------------------------------------------------------------------------
 
 export function TranscriptDisplay({
   voiceState,
@@ -152,9 +150,7 @@ export function TranscriptDisplay({
   return null;
 }
 
-// ---------------------------------------------------------------------------
 // Button config by state
-// ---------------------------------------------------------------------------
 
 function getButtonConfig(
   state: VoiceState,
@@ -201,9 +197,7 @@ function getButtonConfig(
   };
 }
 
-// ---------------------------------------------------------------------------
 // Icons
-// ---------------------------------------------------------------------------
 
 function MicIcon({ active = false }: { active?: boolean }) {
   return (

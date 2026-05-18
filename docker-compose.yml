@@ -6,9 +6,7 @@ version: "3.9"
 # On Linux, host.docker.internal is mapped via extra_hosts below.
 
 services:
-  # ---------------------------------------------------------------------------
   # FastAPI Backend
-  # ---------------------------------------------------------------------------
   backend:
     build:
       context: ./backend
@@ -48,9 +46,7 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # ---------------------------------------------------------------------------
   # Next.js Frontend
-  # ---------------------------------------------------------------------------
   frontend:
     build:
       context: ./frontend

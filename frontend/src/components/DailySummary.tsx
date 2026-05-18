@@ -94,9 +94,7 @@ export default function DailySummary({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Sub-components
-// ---------------------------------------------------------------------------
 
 interface SummaryCellProps {
   label: string;
@@ -186,9 +184,7 @@ function SkeletonGrid() {
   );
 }
 
-// ---------------------------------------------------------------------------
 // Count-up animation hook (private to this file)
-// ---------------------------------------------------------------------------
 
 function easeOut(t: number): number {
   return 1 - Math.pow(1 - t, 3);

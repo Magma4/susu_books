@@ -20,9 +20,7 @@ settings = get_settings()
 router = APIRouter(prefix="/api", tags=["ai"])
 
 
-# ---------------------------------------------------------------------------
 # Text / Voice Chat
-# ---------------------------------------------------------------------------
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
@@ -61,9 +59,7 @@ async def chat(
     )
 
 
-# ---------------------------------------------------------------------------
 # Image / OCR
-# ---------------------------------------------------------------------------
 
 @router.post("/chat/image", response_model=ImageChatResponse)
 async def chat_with_image(
@@ -129,9 +125,7 @@ async def list_languages():
     return AVAILABLE_LANGUAGES
 
 
-# ---------------------------------------------------------------------------
 # Health / Status
-# ---------------------------------------------------------------------------
 
 @router.get("/health")
 async def health_check(

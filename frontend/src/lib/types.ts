@@ -1,8 +1,6 @@
 // Susu Books — shared TypeScript types matching the FastAPI backend schemas
 
-// ---------------------------------------------------------------------------
 // Core domain types
-// ---------------------------------------------------------------------------
 
 export type TransactionType = "purchase" | "sale" | "expense";
 export type TransactionSource = "voice" | "photo" | "manual";
@@ -55,9 +53,7 @@ export interface InventorySetupPayload {
   low_stock_threshold?: number;
 }
 
-// ---------------------------------------------------------------------------
 // Report types
-// ---------------------------------------------------------------------------
 
 export interface ComparisonToYesterday {
   yesterday_revenue: number;
@@ -115,9 +111,7 @@ export interface InventoryAlerts {
   zero_stock_items: { item: string; unit?: string }[];
 }
 
-// ---------------------------------------------------------------------------
 // AI / Chat types
-// ---------------------------------------------------------------------------
 
 export interface FunctionCallRecord {
   name: string;
@@ -139,9 +133,7 @@ export interface ImageChatResponse extends ChatResponse {
   raw_ocr_text?: string;
 }
 
-// ---------------------------------------------------------------------------
 // Language configuration
-// ---------------------------------------------------------------------------
 
 export type LanguageCode = "en" | "tw" | "ha" | "pcm" | "sw" | "fr" | "pt" | "es" | "hi" | "zh" | "nl" | "ar" | "de" | "ja" | "ru";
 
@@ -263,9 +255,7 @@ export const LANGUAGES: LanguageConfig[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
 // UI state types
-// ---------------------------------------------------------------------------
 
 export type VoiceState = "idle" | "listening" | "processing" | "done" | "error";
 

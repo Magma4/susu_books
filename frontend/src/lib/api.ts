@@ -54,9 +54,7 @@ function withTimeout(timeoutMs: number): { controller: AbortController; cleanup:
   };
 }
 
-// ---------------------------------------------------------------------------
 // Core fetch helper
-// ---------------------------------------------------------------------------
 
 async function request<T>(
   path: string,
@@ -101,9 +99,7 @@ export class ApiError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
 // AI / Chat
-// ---------------------------------------------------------------------------
 
 export interface ConversationMessage {
   role: "user" | "assistant";
@@ -156,9 +152,7 @@ export async function sendImageChat(
   }
 }
 
-// ---------------------------------------------------------------------------
 // Transactions
-// ---------------------------------------------------------------------------
 
 export async function getTransactions(params?: {
   date?: string;
@@ -195,9 +189,7 @@ export async function updateTransaction(
   });
 }
 
-// ---------------------------------------------------------------------------
 // Inventory
-// ---------------------------------------------------------------------------
 
 export async function getInventory(lowStockOnly = false): Promise<InventoryItem[]> {
   return request<InventoryItem[]>(
@@ -237,9 +229,7 @@ export async function updateInventoryItem(
 }
 
 
-// ---------------------------------------------------------------------------
 // Reports
-// ---------------------------------------------------------------------------
 
 export async function getDailySummary(date?: string): Promise<DailySummaryData> {
   const query = date ? `?date=${encodeURIComponent(date)}` : "";
@@ -250,9 +240,7 @@ export async function getWeeklyReport(): Promise<WeeklyReportData> {
   return request<WeeklyReportData>("/api/summary/weekly");
 }
 
-// ---------------------------------------------------------------------------
 // Health
-// ---------------------------------------------------------------------------
 
 export interface HealthStatus {
   status: "ok" | "degraded";
@@ -270,9 +258,7 @@ export async function getHealth(): Promise<HealthStatus> {
   return request<HealthStatus>("/api/health", { timeoutMs: 8_000 });
 }
 
-// ---------------------------------------------------------------------------
 // Export / Backup
-// ---------------------------------------------------------------------------
 
 function getFilenameFromDisposition(contentDisposition: string | null, fallback: string): string {
   if (!contentDisposition) return fallback;
