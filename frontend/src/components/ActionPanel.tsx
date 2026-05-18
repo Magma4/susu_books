@@ -181,27 +181,36 @@ function AlertCard({ type, icon, title, message }: AlertCardProps) {
 function InsightCard({ summary }: { summary: DailySummaryData }) {
   const comp = summary.comparison_to_yesterday;
   const better = comp && comp.profit_change > 0;
+  const sameAsYesterday = comp && comp.profit_change === 0;
+  const comparisonText = comp
+    ? better
+      ? `Up ${formatAmount(comp.profit_change, "GHS")} from yesterday.`
+      : sameAsYesterday
+        ? "Same profit as yesterday."
+        : `Down ${formatAmount(Math.abs(comp.profit_change), "GHS")} from yesterday.`
+    : null;
 
   return (
-    <div className="rounded-xl border border-primary-100 bg-primary-surface px-3 py-2.5">
+    <div className="rounded-xl border border-primary-100 bg-primary-surface px-3 py-3">
       <div className="flex items-start gap-2">
         <span className="text-base flex-shrink-0 mt-0.5">
-          {better ? "🚀" : "📊"}
+          {better ? "+" : "="}
         </span>
         <div>
           <p className="text-sm font-semibold text-primary-900 leading-tight">
-            {better
-              ? "Great day! You&apos;re up from yesterday"
-              : "You&apos;re profitable today"}
+            Today is profitable
           </p>
           <p className="text-xs text-primary-800 opacity-80 mt-0.5">
-            Net profit:{" "}
+            Profit so far:{" "}
             <span className="font-mono font-semibold">
               {formatAmount(summary.net_profit, "GHS")}
             </span>
-            {summary.profit_margin_pct != null &&
-              ` (${summary.profit_margin_pct.toFixed(1)}% margin)`}
           </p>
+          {comparisonText && (
+            <p className="text-xs text-text-secondary mt-1 leading-snug">
+              {comparisonText}
+            </p>
+          )}
         </div>
       </div>
     </div>
