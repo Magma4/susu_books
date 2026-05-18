@@ -5,7 +5,7 @@
  * - Graceful fallback when not supported
  * - Live interim transcript display
  * - Language switching
- * - Clean state machine: idle → listening → done/error
+ * - Seller-controlled recording: browser auto-ends are restarted until the user taps stop
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -52,6 +52,18 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const finalTranscriptRef = useRef("");
+  const interimTranscriptRef = useRef("");
+  const recognitionActiveRef = useRef(false);
+  const shouldKeepListeningRef = useRef(false);
+  const manuallyStoppingRef = useRef(false);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearRestartTimer = useCallback(() => {
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+  }, []);
 
   // Check browser support on mount
   useEffect(() => {
@@ -72,18 +84,19 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
       recognitionRef.current.onend = null;
       recognitionRef.current.abort();
     }
+    clearRestartTimer();
 
     const recognition = new SR();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.lang = language;
 
     recognition.onstart = () => {
+      recognitionActiveRef.current = true;
       setVoiceState("listening");
       setError(null);
       setInterimTranscript("");
-      finalTranscriptRef.current = "";
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -98,15 +111,44 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
         }
       }
       if (final) {
-        finalTranscriptRef.current += final;
+        finalTranscriptRef.current = [finalTranscriptRef.current, final.trim()]
+          .filter(Boolean)
+          .join(" ");
         setTranscript(finalTranscriptRef.current);
       }
+      interimTranscriptRef.current = interim;
       setInterimTranscript(interim);
     };
 
     recognition.onend = () => {
+      recognitionActiveRef.current = false;
+      const interimAtEnd = interimTranscriptRef.current.trim();
+      if (interimAtEnd) {
+        finalTranscriptRef.current = [finalTranscriptRef.current, interimAtEnd]
+          .filter(Boolean)
+          .join(" ");
+        setTranscript(finalTranscriptRef.current);
+      }
       const finalText = finalTranscriptRef.current.trim();
       setInterimTranscript("");
+      interimTranscriptRef.current = "";
+
+      if (shouldKeepListeningRef.current && !manuallyStoppingRef.current) {
+        setVoiceState("listening");
+        clearRestartTimer();
+        restartTimerRef.current = setTimeout(() => {
+          if (!shouldKeepListeningRef.current || recognitionActiveRef.current) return;
+          try {
+            recognition.start();
+          } catch (e) {
+            console.warn("SpeechRecognition restart error:", e);
+          }
+        }, 250);
+        return;
+      }
+
+      shouldKeepListeningRef.current = false;
+      manuallyStoppingRef.current = false;
       if (finalText) {
         setTranscript(finalText);
         setVoiceState("done");
@@ -117,29 +159,49 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      recognitionActiveRef.current = false;
+      if (shouldKeepListeningRef.current && event.error === "no-speech") {
+        setInterimTranscript("");
+        setVoiceState("listening");
+        return;
+      }
+
+      if (event.error === "aborted" && !manuallyStoppingRef.current) {
+        return;
+      }
+
       const msg = getErrorMessage(event.error);
       setError(msg);
       setVoiceState("error");
       setInterimTranscript("");
+      shouldKeepListeningRef.current = false;
+      manuallyStoppingRef.current = false;
       onError?.(msg);
     };
 
     recognitionRef.current = recognition;
 
     return () => {
+      clearRestartTimer();
+      shouldKeepListeningRef.current = false;
       recognition.onend = null;
       recognition.abort();
     };
-  }, [language, onFinal, onError]);
+  }, [language, onFinal, onError, clearRestartTimer]);
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current) return;
     if (voiceState === "listening") return;
 
+    clearRestartTimer();
+    shouldKeepListeningRef.current = true;
+    manuallyStoppingRef.current = false;
     setTranscript("");
     setInterimTranscript("");
     finalTranscriptRef.current = "";
+    interimTranscriptRef.current = "";
     setError(null);
+    setVoiceState("listening");
 
     try {
       recognitionRef.current.start();
@@ -147,12 +209,31 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
       // Ignore "already started" errors (can happen on rapid taps)
       console.warn("SpeechRecognition start error:", e);
     }
-  }, [voiceState]);
+  }, [voiceState, clearRestartTimer]);
 
   const stopListening = useCallback(() => {
     if (!recognitionRef.current) return;
-    recognitionRef.current.stop();
-  }, []);
+    clearRestartTimer();
+    shouldKeepListeningRef.current = false;
+    manuallyStoppingRef.current = true;
+
+    if (recognitionActiveRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const finalText = (finalTranscriptRef.current || interimTranscriptRef.current).trim();
+    setInterimTranscript("");
+    interimTranscriptRef.current = "";
+    manuallyStoppingRef.current = false;
+    if (finalText) {
+      setTranscript(finalText);
+      setVoiceState("done");
+      onFinal?.(finalText);
+    } else {
+      setVoiceState("idle");
+    }
+  }, [clearRestartTimer, onFinal]);
 
   const toggleListening = useCallback(() => {
     if (voiceState === "listening") {
@@ -163,6 +244,9 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   }, [voiceState, startListening, stopListening]);
 
   const reset = useCallback(() => {
+    clearRestartTimer();
+    shouldKeepListeningRef.current = false;
+    manuallyStoppingRef.current = false;
     if (recognitionRef.current && voiceState === "listening") {
       recognitionRef.current.abort();
     }
@@ -171,7 +255,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     setInterimTranscript("");
     setError(null);
     finalTranscriptRef.current = "";
-  }, [voiceState]);
+    interimTranscriptRef.current = "";
+  }, [voiceState, clearRestartTimer]);
 
   return {
     voiceState,

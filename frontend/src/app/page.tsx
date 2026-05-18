@@ -413,7 +413,6 @@ export default function HomePage() {
     isSupported: voiceSupported,
     error: voiceError,
     toggleListening,
-    stopListening,
     reset,
   } = useVoiceInput({
     language: langConfig.speechCode,
@@ -772,7 +771,6 @@ export default function HomePage() {
               isSupported={voiceSupported}
               error={voiceError}
               onToggle={isProcessingChat ? () => {} : toggleListening}
-              onStop={stopListening}
               disabled={isProcessingChat}
             />
 

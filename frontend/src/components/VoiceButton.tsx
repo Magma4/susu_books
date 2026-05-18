@@ -9,10 +9,10 @@
  *   done        → brief green checkmark flash, then returns to idle
  *   error       → red mic, error message, tap to retry
  *
- * Supports both tap-to-toggle and hold-to-speak (press + release).
+ * Uses tap-to-start / tap-to-finish so busy sellers control when capture ends.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { VoiceState } from "@/lib/types";
 import LoadingPulse from "./LoadingPulse";
 
@@ -22,7 +22,6 @@ interface VoiceButtonProps {
   isSupported: boolean;
   error: string | null;
   onToggle: () => void;
-  onStop: () => void;
   disabled?: boolean;
 }
 
@@ -32,12 +31,9 @@ export default function VoiceButton({
   isSupported,
   error,
   onToggle,
-  onStop,
   disabled = false,
 }: VoiceButtonProps) {
   const [showDone, setShowDone] = useState(false);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isHoldingRef = useRef(false);
 
   // Flash "done" checkmark briefly when state transitions to done
   useEffect(() => {
@@ -48,33 +44,9 @@ export default function VoiceButton({
     }
   }, [voiceState]);
 
-  // Hold-to-speak: start after 200ms hold
-  const handlePointerDown = useCallback(() => {
-    if (disabled || voiceState === "processing") return;
-    isHoldingRef.current = true;
-    holdTimerRef.current = setTimeout(() => {
-      if (isHoldingRef.current && voiceState === "idle") {
-        onToggle(); // start listening
-      }
-    }, 200);
-  }, [disabled, voiceState, onToggle]);
-
-  const handlePointerUp = useCallback(() => {
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    if (isHoldingRef.current) {
-      isHoldingRef.current = false;
-      if (voiceState === "listening") {
-        onStop(); // stop and process
-      }
-    }
-  }, [voiceState, onStop]);
-
   const handleClick = useCallback(() => {
     if (disabled || voiceState === "processing") return;
-    // Tap-to-toggle (when not in hold mode)
-    if (!isHoldingRef.current) {
-      onToggle();
-    }
+    onToggle();
   }, [disabled, voiceState, onToggle]);
 
   // Button appearance by state
@@ -108,9 +80,6 @@ export default function VoiceButton({
         <button
           type="button"
           onClick={handleClick}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
           disabled={disabled || !isSupported || isProcessing}
           aria-label={label}
           aria-pressed={isListening}
@@ -159,7 +128,7 @@ export default function VoiceButton({
         }`}
       >
         {isListening
-          ? "Listening… tap to stop"
+          ? "Listening… tap when done"
           : isProcessing
           ? "Thinking…"
           : showDone
@@ -168,7 +137,7 @@ export default function VoiceButton({
           ? "Voice not supported"
           : voiceState === "error"
           ? "Tap to retry"
-          : "Tap to speak"}
+          : "Tap once to speak"}
       </p>
     </div>
   );
@@ -213,7 +182,7 @@ function TranscriptDisplay({
   if (voiceState === "listening") {
     return (
       <p className="text-xs text-accent-800 text-center animate-pulse">
-        Speak now…
+        Speak freely. I will keep listening until you tap again.
       </p>
     );
   }
@@ -249,7 +218,7 @@ function getButtonConfig(
       bg: "bg-accent-800",
       ring: "ring-4 ring-accent-800/30",
       icon: <MicIcon active />,
-      label: "Stop listening",
+      label: "Finish voice input",
     };
   }
   if (state === "processing") {
