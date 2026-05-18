@@ -563,8 +563,9 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary-900 rounded-xl flex items-center justify-center shadow-sm">
-              <BookIcon />
+            <div className="h-10 w-10 bg-primary-900 rounded-xl flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Susu Books Logo" className="h-full w-full object-cover" />
             </div>
             <div>
               <h1 className="font-semibold text-text-primary leading-tight text-sm">
