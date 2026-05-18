@@ -386,13 +386,12 @@ export default function HomePage() {
 
   const handleVoiceError = useCallback(
     (err: string) => {
-      // If voice fails, automatically show text input as fallback
       if (err.includes("denied") || err.includes("not available") || err.includes("not supported")) {
         setShowTextInput(true);
         addToast(
           "info",
-          "I couldn't access the microphone — try typing instead",
-          5000
+          "Microphone blocked. Please use Chrome/Safari for the voice demo, or type your transaction instead.",
+          6000
         );
       } else if (!err.includes("aborted")) {
         addToast("warning", err, 4000);
@@ -758,7 +757,7 @@ export default function HomePage() {
                   placeholder={
                     voiceSupported
                       ? "Type your transaction…"
-                      : "Voice not supported — type here"
+                      : "Voice requires Chrome/Safari. Type here..."
                   }
                   disabled={isProcessingChat}
                   className="
