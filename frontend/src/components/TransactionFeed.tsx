@@ -41,15 +41,23 @@ export default function TransactionFeed({
     prevCountRef.current = curr;
   }, [transactions]);
 
+  const [filterDate, setFilterDate] = useState<string>("");
+
+  const filteredTransactions = transactions.filter((t) => {
+    if (!filterDate) return true;
+    const tDate = t.created_at.split("T")[0];
+    return tDate === filterDate;
+  });
+
   const todayLabel = new Date().toLocaleDateString("en-GH", {
     weekday: "long",
     month: "short",
     day: "numeric",
   });
 
-  const salesCount = transactions.filter((t) => t.type === "sale").length;
-  const purchasesCount = transactions.filter((t) => t.type === "purchase").length;
-  const expensesCount = transactions.filter((t) => t.type === "expense").length;
+  const salesCount = filteredTransactions.filter((t) => t.type === "sale").length;
+  const purchasesCount = filteredTransactions.filter((t) => t.type === "purchase").length;
+  const expensesCount = filteredTransactions.filter((t) => t.type === "expense").length;
 
   const handleSaveEdit = async (id: number, payload: Partial<Transaction>) => {
     try {
@@ -74,33 +82,64 @@ export default function TransactionFeed({
     }
   };
 
+  // Format active date label
+  const activeDateLabel = filterDate
+    ? new Date(filterDate).toLocaleDateString("en-GH", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "All Dates";
+
   return (
     <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden flex flex-col h-full">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex-shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-              Today&apos;s Ledger
+              {filterDate ? "Filtered Ledger" : "All Transactions"}
             </span>
-            <p className="text-xs text-text-disabled mt-0.5">{todayLabel}</p>
+            <p className="text-xs text-text-disabled mt-0.5">{activeDateLabel}</p>
           </div>
 
-          {/* Type summary pills */}
-          {transactions.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              {salesCount > 0 && (
-                <TypePill count={salesCount} label="sales" colorClass="bg-primary-surface text-primary-800" />
-              )}
-              {purchasesCount > 0 && (
-                <TypePill count={purchasesCount} label="buys" colorClass="bg-accent-light text-accent-800" />
-              )}
-              {expensesCount > 0 && (
-                <TypePill count={expensesCount} label="expenses" colorClass="bg-red-50 text-danger" />
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Native Date Picker */}
+            <label htmlFor="ledger-date-filter" className="sr-only">Filter by Date</label>
+            <input
+              id="ledger-date-filter"
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="text-xs border border-border rounded-xl px-2.5 py-1.5 bg-background text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-transparent cursor-pointer"
+            />
+            {filterDate && (
+              <button
+                type="button"
+                onClick={() => setFilterDate("")}
+                className="text-xs font-medium text-primary-900 hover:text-primary-700 bg-primary-surface px-2.5 py-1.5 rounded-xl active:scale-95 transition-all"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Type summary pills */}
+        {filteredTransactions.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/50">
+            {salesCount > 0 && (
+              <TypePill count={salesCount} label="sales" colorClass="bg-primary-surface text-primary-800" />
+            )}
+            {purchasesCount > 0 && (
+              <TypePill count={purchasesCount} label="buys" colorClass="bg-accent-light text-accent-800" />
+            )}
+            {expensesCount > 0 && (
+              <TypePill count={expensesCount} label="expenses" colorClass="bg-red-50 text-danger" />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Transaction list */}
@@ -111,11 +150,23 @@ export default function TransactionFeed({
       >
         {isLoading ? (
           <SkeletonList />
-        ) : transactions.length === 0 ? (
-          <EmptyState />
+        ) : filteredTransactions.length === 0 ? (
+          filterDate ? (
+            <div className="flex flex-col items-center justify-center h-48 px-6 text-center">
+              <div className="text-4xl mb-3">📅</div>
+              <p className="text-sm font-semibold text-text-secondary">
+                No transactions found
+              </p>
+              <p className="text-xs text-text-disabled mt-1">
+                No records exist on {activeDateLabel}
+              </p>
+            </div>
+          ) : (
+            <EmptyState />
+          )
         ) : (
           <div className="p-3 space-y-2">
-            {transactions.map((tx) => (
+            {filteredTransactions.map((tx) => (
               <TransactionCard
                 key={tx.id}
                 transaction={tx}
