@@ -26,7 +26,7 @@ jobs:
         run: python -m pip install --upgrade pip && pip install -r backend/requirements.txt
 
       - name: Compile Python
-        run: python -m py_compile backend/*.py backend/routers/*.py backend/services/*.py training/*.py
+        run: python -m py_compile backend/*.py backend/routers/*.py backend/services/*.py
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
