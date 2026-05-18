@@ -2,9 +2,10 @@
 /**
  * TransactionCard — A single transaction row in the live ledger feed.
  * Slides in from the top when it first renders (CSS animation).
+ * Features hover-active editing and deleting triggers.
  */
 
-import { txColors, formatAmount, formatTime, relativeTime } from "@/styles/theme";
+import { txColors, formatAmount, relativeTime } from "@/styles/theme";
 import type { Transaction } from "@/lib/types";
 import {
   formatTransactionSubtitle,
@@ -14,13 +15,16 @@ import {
 
 interface TransactionCardProps {
   transaction: Transaction;
-  /** When true, applies the slide-in animation (new transactions) */
   isNew?: boolean;
+  onEdit: (tx: Transaction) => void;
+  onDelete: (tx: Transaction) => void;
 }
 
 export default function TransactionCard({
   transaction: t,
   isNew = false,
+  onEdit,
+  onDelete,
 }: TransactionCardProps) {
   const style = txColors[t.type];
   const title = formatTransactionTitle(t);
@@ -31,7 +35,7 @@ export default function TransactionCard({
     <div
       className={`
         flex items-center gap-3 px-3 py-3 rounded-xl border bg-white
-        transition-shadow hover:shadow-card-hover cursor-default select-none
+        transition-all duration-200 hover:shadow-card-hover hover:border-gray-300 group
         ${style.border}
         ${isNew ? "animate-slide-in" : ""}
       `}
@@ -83,17 +87,62 @@ export default function TransactionCard({
         )}
       </div>
 
-      {/* Source badge */}
-      <div className="flex-shrink-0">
-        <SourceBadge source={t.source} />
+      {/* Badges / Hover Actions */}
+      <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
+        {/* Source Badge — hides on card hover to reveal actions for touch/mouse */}
+        <div className="group-hover:hidden transition-all duration-150 flex items-center justify-center">
+          <SourceBadge source={t.source} />
+        </div>
+
+        {/* Action controls — revealed on card hover */}
+        <div className="hidden group-hover:flex items-center gap-1 transition-all duration-150">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(t);
+            }}
+            aria-label="Edit transaction"
+            className="p-1.5 text-text-disabled hover:text-primary-700 hover:bg-primary-surface rounded-lg transition-all duration-150 active:scale-90"
+          >
+            <PencilIcon />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(t);
+            }}
+            aria-label="Delete transaction"
+            className="p-1.5 text-text-disabled hover:text-danger hover:bg-red-50 rounded-lg transition-all duration-150 active:scale-90"
+          >
+            <TrashIcon />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Sub-components & Icons
 // ---------------------------------------------------------------------------
+
+function PencilIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  );
+}
 
 function SourceBadge({ source }: { source: Transaction["source"] }) {
   if (source === "voice") {

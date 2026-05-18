@@ -77,8 +77,8 @@ async def update_inventory_settings(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Update inventory settings for a specific item.
-    Currently supports: low_stock_threshold, unit.
+    Update inventory settings or adjust stock levels directly.
+    Supports adjusting: quantity, avg_cost, low_stock_threshold, unit, and selling rules.
     """
     svc = InventoryService(db)
     inv = await svc.get_item(item_name)
@@ -87,6 +87,19 @@ async def update_inventory_settings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No inventory record found for '{item_name}'.",
         )
+
+    if payload.quantity is not None:
+        inv.quantity = round(payload.quantity, 4)
+        inv.is_low_stock = inv.quantity <= inv.low_stock_threshold
+        inv.updated_at = utcnow()
+        await db.flush()
+        await db.refresh(inv)
+
+    if payload.avg_cost is not None:
+        inv.avg_cost = round(payload.avg_cost, 4)
+        inv.updated_at = utcnow()
+        await db.flush()
+        await db.refresh(inv)
 
     if payload.low_stock_threshold is not None:
         inv = await svc.update_threshold(item_name, payload.low_stock_threshold)
@@ -112,6 +125,23 @@ async def update_inventory_settings(
         await db.refresh(inv)
 
     return InventoryOut.model_validate(inv)
+
+
+@router.delete("/{item_name}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_inventory_item(
+    item_name: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an inventory record entirely from the database."""
+    svc = InventoryService(db)
+    deleted = await svc.delete_item(item_name)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No inventory record found for '{item_name}'.",
+        )
+    return None
+
 
 
 @router.get("/check/alerts", response_model=dict)

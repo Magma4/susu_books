@@ -305,11 +305,14 @@ class InventoryOut(BaseModel):
 
 
 class InventoryUpdate(BaseModel):
+    quantity: Optional[float] = Field(None, ge=0)
+    avg_cost: Optional[float] = Field(None, ge=0)
     low_stock_threshold: Optional[float] = Field(None, gt=0)
     unit: Optional[str] = None
     sale_price_amount: Optional[float] = Field(None, gt=0)
     sale_price_quantity: Optional[float] = Field(None, gt=0)
     sale_currency: Optional[str] = None
+
 
 
 class InventorySetup(BaseModel):

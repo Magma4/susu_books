@@ -160,6 +160,19 @@ class InventoryService:
         )
         return result.scalar_one_or_none()
 
+    async def delete_item(self, item: str) -> bool:
+        normalized_item = normalize_item_name(item)
+        result = await self.db.execute(
+            select(Inventory).where(Inventory.item == normalized_item)
+        )
+        inventory = result.scalar_one_or_none()
+        if inventory is None:
+            return False
+        await self.db.delete(inventory)
+        await self.db.flush()
+        return True
+
+
     async def get_all(self) -> list[Inventory]:
         result = await self.db.execute(
             select(Inventory).order_by(Inventory.quantity.asc(), Inventory.item.asc())

@@ -175,6 +175,26 @@ export async function getTransactions(params?: {
   return request<Transaction[]>(`/api/transactions${query}`);
 }
 
+export async function deleteTransaction(transactionId: number): Promise<void> {
+  const url = `${BASE_URL}/api/transactions/${transactionId}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    await parseErrorResponse(res, `/api/transactions/${transactionId}`);
+  }
+}
+
+export async function updateTransaction(
+  transactionId: number,
+  payload: Partial<Transaction>
+): Promise<Transaction> {
+  return request<Transaction>(`/api/transactions/${transactionId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Inventory
 // ---------------------------------------------------------------------------
@@ -195,6 +215,27 @@ export async function setupInventoryItem(payload: InventorySetupPayload): Promis
     body: JSON.stringify(payload),
   });
 }
+
+export async function deleteInventoryItem(itemName: string): Promise<void> {
+  const url = `${BASE_URL}/api/inventory/${encodeURIComponent(itemName)}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    await parseErrorResponse(res, `/api/inventory/${itemName}`);
+  }
+}
+
+export async function updateInventoryItem(
+  itemName: string,
+  payload: Partial<InventoryItem>
+): Promise<InventoryItem> {
+  return request<InventoryItem>(`/api/inventory/${encodeURIComponent(itemName)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 
 // ---------------------------------------------------------------------------
 // Reports

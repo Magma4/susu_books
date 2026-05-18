@@ -191,11 +191,11 @@ write_backend_env() {
   fi
 
   if ! grep -q '^ALLOWED_HOSTS=' backend/.env; then
-    printf 'ALLOWED_HOSTS=localhost,127.0.0.1\n' >> backend/.env
+    printf 'ALLOWED_HOSTS=["localhost","127.0.0.1"]\n' >> backend/.env
   fi
 
   if ! grep -q '^CORS_ORIGINS=' backend/.env; then
-    printf 'CORS_ORIGINS=http://localhost:3000\n' >> backend/.env
+    printf 'CORS_ORIGINS=["http://localhost:3000"]\n' >> backend/.env
   fi
 
   rm -f backend/.env.bak

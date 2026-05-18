@@ -205,7 +205,7 @@ def create_app() -> FastAPI:
     app.include_router(exports.router)
 
     # ------------------------------------------------------------------
-    # Root endpoint
+    # Root & Health check endpoints
     # ------------------------------------------------------------------
     @app.get("/", tags=["root"])
     async def root():
@@ -216,6 +216,10 @@ def create_app() -> FastAPI:
             "environment": settings.environment,
             "docs": "/docs" if docs_enabled else None,
         }
+
+    @app.get("/healthz", tags=["root"])
+    async def healthz():
+        return {"status": "healthy"}
 
     return app
 

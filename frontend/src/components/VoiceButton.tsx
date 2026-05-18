@@ -1,15 +1,7 @@
 "use client";
 /**
  * VoiceButton — The primary interaction element for Susu Books.
- *
- * States:
- *   idle        → green mic, tap to start listening
- *   listening   → amber pulse ring + live waveform bars + live transcript
- *   processing  → spinning ring, "Thinking…" label
- *   done        → brief green checkmark flash, then returns to idle
- *   error       → red mic, error message, tap to retry
- *
- * Uses tap-to-start / tap-to-finish so busy sellers control when capture ends.
+ * Simplified to be a flat, circular button aligning perfectly with sibling controls.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -18,18 +10,14 @@ import LoadingPulse from "./LoadingPulse";
 
 interface VoiceButtonProps {
   voiceState: VoiceState;
-  interimTranscript: string;
   isSupported: boolean;
-  error: string | null;
   onToggle: () => void;
   disabled?: boolean;
 }
 
 export default function VoiceButton({
   voiceState,
-  interimTranscript,
   isSupported,
-  error,
   onToggle,
   disabled = false,
 }: VoiceButtonProps) {
@@ -49,105 +37,67 @@ export default function VoiceButton({
     onToggle();
   }, [disabled, voiceState, onToggle]);
 
-  // Button appearance by state
   const { bg, ring, icon, label } = getButtonConfig(voiceState, showDone, isSupported);
 
   const isListening = voiceState === "listening";
   const isProcessing = voiceState === "processing";
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      {/* Live transcript / status label */}
-      <div className="min-h-[36px] flex items-center justify-center px-4">
-        <TranscriptDisplay
-          voiceState={voiceState}
-          interimTranscript={interimTranscript}
-          error={error}
-          isSupported={isSupported}
-        />
-      </div>
+    <div className="relative flex items-center justify-center flex-shrink-0">
+      {/* Outer pulse ring — only visible while listening */}
+      {isListening && (
+        <span className="absolute inset-0 rounded-full bg-accent-800/20 animate-ping scale-150" />
+      )}
+      {isListening && (
+        <span className="absolute inset-0 rounded-full bg-accent-800/10 animate-ping scale-125" style={{ animationDelay: "0.4s" }} />
+      )}
 
-      {/* The big button */}
-      <div className="relative flex items-center justify-center">
-        {/* Outer pulse ring — only visible while listening */}
-        {isListening && (
-          <span className="absolute inset-0 rounded-full bg-accent-800/20 animate-ping scale-150" />
-        )}
-        {isListening && (
-          <span className="absolute inset-0 rounded-full bg-accent-800/10 animate-ping scale-125" style={{ animationDelay: "0.4s" }} />
-        )}
-
-        <button
-          type="button"
-          onClick={handleClick}
-          disabled={disabled || !isSupported || isProcessing}
-          aria-label={label}
-          aria-pressed={isListening}
-          className={`
-            relative z-10 h-20 w-20 rounded-full flex items-center justify-center
-            transition-all duration-200 select-none touch-none
-            focus:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 focus-visible:ring-primary-light
-            active:scale-95
-            ${bg}
-            ${ring}
-            ${
-              disabled || !isSupported
-                ? "opacity-40 cursor-not-allowed"
-                : isProcessing
-                ? "cursor-wait"
-                : "cursor-pointer"
-            }
-          `}
-          style={{
-            boxShadow: isListening
-              ? "0 4px 20px rgba(245,127,23,0.45), 0 2px 8px rgba(245,127,23,0.25)"
-              : "0 4px 14px rgba(27,94,32,0.35), 0 2px 6px rgba(27,94,32,0.2)",
-          }}
-        >
-          {/* Icon content */}
-          {isProcessing ? (
-            <LoadingPulse size="md" color="white" />
-          ) : showDone ? (
-            <CheckIcon />
-          ) : isListening ? (
-            <WaveformIcon />
-          ) : (
-            icon
-          )}
-        </button>
-      </div>
-
-      {/* State label */}
-      <p
-        className={`text-xs font-medium transition-colors duration-200 ${
-          isListening
-            ? "text-accent-800"
-            : isProcessing
-            ? "text-primary-700"
-            : "text-text-secondary"
-        }`}
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={disabled || !isSupported || isProcessing}
+        aria-label={label}
+        aria-pressed={isListening}
+        className={`
+          relative z-10 h-14 w-14 rounded-full flex items-center justify-center
+          transition-all duration-200 select-none touch-none
+          focus:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 focus-visible:ring-primary-light
+          active:scale-95 shadow-sm
+          ${bg}
+          ${ring}
+          ${
+            disabled || !isSupported
+              ? "opacity-40 cursor-not-allowed"
+              : isProcessing
+              ? "cursor-wait"
+              : "cursor-pointer"
+          }
+        `}
+        style={{
+          boxShadow: isListening
+            ? "0 4px 14px rgba(245,127,23,0.3), 0 2px 6px rgba(245,127,23,0.15)"
+            : "0 4px 10px rgba(27,94,32,0.25), 0 2px 4px rgba(27,94,32,0.1)",
+        }}
       >
-        {isListening
-          ? "Listening… tap when done"
-          : isProcessing
-          ? "Thinking…"
-          : showDone
-          ? "Got it!"
-          : !isSupported
-          ? "Voice not supported"
-          : voiceState === "error"
-          ? "Tap to retry"
-          : "Tap once to speak"}
-      </p>
+        {isProcessing ? (
+          <LoadingPulse size="sm" color="white" />
+        ) : showDone ? (
+          <CheckIcon />
+        ) : isListening ? (
+          <WaveformIcon />
+        ) : (
+          icon
+        )}
+      </button>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Transcript / status display
+// Transcript Display — Rendered above the buttons in page.tsx for layout elegance
 // ---------------------------------------------------------------------------
 
-function TranscriptDisplay({
+export function TranscriptDisplay({
   voiceState,
   interimTranscript,
   error,
@@ -160,37 +110,43 @@ function TranscriptDisplay({
 }) {
   if (!isSupported) {
     return (
-      <p className="text-xs text-text-disabled text-center max-w-xs">
-        Your browser doesn&apos;t support voice input. Use the text field below.
+      <p className="text-xs text-text-disabled text-center max-w-md mx-auto leading-relaxed">
+        Your browser doesn&apos;t support voice input. Use the text field.
       </p>
     );
   }
   if (voiceState === "error" && error) {
     return (
-      <p className="text-xs text-danger text-center max-w-xs font-medium">
+      <p className="text-xs text-danger text-center max-w-md mx-auto font-medium animate-fadeIn">
         {error}
       </p>
     );
   }
   if (voiceState === "listening" && interimTranscript) {
     return (
-      <p className="text-sm text-text-primary text-center max-w-xs italic leading-snug animate-fade-in">
+      <p className="text-sm font-medium text-primary-900 text-center max-w-md mx-auto italic leading-snug animate-fadeIn">
         &ldquo;{interimTranscript}&rdquo;
       </p>
     );
   }
   if (voiceState === "listening") {
     return (
-      <p className="text-xs text-accent-800 text-center animate-pulse">
-        Speak freely. I will keep listening until you tap again.
-      </p>
+      <div className="flex items-center justify-center gap-2 max-w-md mx-auto animate-pulse">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent-800 animate-ping" />
+        <p className="text-xs text-accent-800 font-semibold tracking-wide uppercase">
+          Listening… speak clearly
+        </p>
+      </div>
     );
   }
   if (voiceState === "processing") {
     return (
-      <p className="text-xs text-text-secondary text-center animate-pulse">
-        Processing your request…
-      </p>
+      <div className="flex items-center justify-center gap-2 max-w-md mx-auto animate-pulse">
+        <span className="h-2 w-2 border-2 border-primary-800/40 border-t-primary-800 rounded-full animate-spin" />
+        <p className="text-xs text-primary-900 font-semibold tracking-wide uppercase">
+          Thinking…
+        </p>
+      </div>
     );
   }
   return null;
@@ -253,7 +209,7 @@ function MicIcon({ active = false }: { active?: boolean }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      className={`h-8 w-8 text-white transition-transform duration-200 ${active ? "scale-110" : ""}`}
+      className={`h-6 w-6 text-white transition-transform duration-200 ${active ? "scale-110 animate-pulse" : ""}`}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -274,7 +230,7 @@ function CheckIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      className="h-9 w-9 text-white animate-fade-in"
+      className="h-6 w-6 text-white animate-fade-in"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -289,7 +245,6 @@ function CheckIcon() {
 }
 
 function WaveformIcon() {
-  // Animated waveform bars shown while listening
   const bars = [
     { height: "h-3", delay: "0ms" },
     { height: "h-5", delay: "160ms" },

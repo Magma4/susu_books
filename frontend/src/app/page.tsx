@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import VoiceButton from "@/components/VoiceButton";
+import VoiceButton, { TranscriptDisplay } from "@/components/VoiceButton";
 import CameraButton from "@/components/CameraButton";
 import TransactionFeed from "@/components/TransactionFeed";
 import DailySummary from "@/components/DailySummary";
@@ -28,6 +28,7 @@ import ChatBubble from "@/components/ChatBubble";
 import LanguageSelector from "@/components/LanguageSelector";
 import OllamaOfflineScreen from "@/components/OllamaOfflineScreen";
 import DemoMode from "@/components/DemoMode";
+import PinAuthScreen from "@/components/PinAuthScreen";
 
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoiceOutput } from "@/hooks/useVoiceOutput";
@@ -74,6 +75,7 @@ export default function HomePage() {
   // State
   // ---------------------------------------------------------------------------
   const [language, setLanguage] = useState<LanguageCode>("en");
+  const [isLocked, setIsLocked] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isProcessingChat, setIsProcessingChat] = useState(false);
   const [textInput, setTextInput] = useState("");
@@ -536,6 +538,15 @@ export default function HomePage() {
     );
   }
 
+  if (isLocked) {
+    return (
+      <PinAuthScreen
+        onUnlock={() => setIsLocked(false)}
+        businessName={isDemoMode ? "Ama's Market Stall" : "Susu Books"}
+      />
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Render — main dashboard
   // ---------------------------------------------------------------------------
@@ -614,6 +625,26 @@ export default function HomePage() {
               Demo
             </button>
 
+            {/* Lock App button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof navigator !== "undefined" && navigator.vibrate) {
+                  navigator.vibrate(20);
+                }
+                setIsLocked(true);
+                addToast("info", "Ledger locked securely.");
+              }}
+              className="
+                h-8 w-8 rounded-full border border-border flex items-center justify-center flex-shrink-0
+                text-text-secondary hover:border-danger hover:text-danger transition-colors
+              "
+              title="Lock dashboard"
+              aria-label="Lock dashboard"
+            >
+              <LockIcon />
+            </button>
+
             <LanguageSelector value={language} onChange={setLanguage} />
           </div>
         </div>
@@ -642,6 +673,8 @@ export default function HomePage() {
               <TransactionFeed
                 transactions={transactions}
                 isLoading={isLoadingInitial}
+                onTransactionChanged={refreshAll}
+                onNotify={addToast}
               />
             </div>
 
@@ -674,10 +707,11 @@ export default function HomePage() {
       </main>
 
       {/* ------------------------------------------------------------------ */}
+      {/* ------------------------------------------------------------------ */}
       {/* ZONE 3 — Bottom Action Bar                                         */}
       {/* ------------------------------------------------------------------ */}
       <div className="zone-bottom bottom-bar flex-shrink-0 fixed bottom-6 left-0 right-0 z-30 pointer-events-none px-4">
-        <div className="max-w-2xl mx-auto pointer-events-auto bg-white/90 backdrop-blur-md border border-border shadow-card-hover rounded-[2.5rem] p-4 space-y-3">
+        <div className="max-w-2xl mx-auto pointer-events-auto bg-white/90 backdrop-blur-md border border-border shadow-card-hover rounded-[2.2rem] p-3.5 space-y-3">
 
           {/* Demo mode panel */}
           {isDemoMode && (
@@ -687,6 +721,18 @@ export default function HomePage() {
                 addToast("success", "Demo complete. You can now try your own transaction.");
               }}
             />
+          )}
+
+          {/* Status & Live Transcript Panel (Elevated out of VoiceButton to avoid card bulkiness) */}
+          {(displayVoiceState === "listening" || displayVoiceState === "processing" || voiceError || !voiceSupported) && (
+            <div className="w-full text-center px-4 py-2 bg-gray-50/80 rounded-2xl border border-border/40 animate-fadeIn">
+              <TranscriptDisplay
+                voiceState={displayVoiceState}
+                interimTranscript={interimTranscript}
+                error={voiceError}
+                isSupported={voiceSupported}
+              />
+            </div>
           )}
 
           {/* Text input */}
@@ -737,18 +783,18 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Main button row */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
+          {/* Main button row — Slim, balanced, flat, matching button heights perfectly */}
+          <div className="flex items-center justify-center gap-3">
             {/* Inventory setup */}
             <button
               type="button"
               onClick={() => setShowInventorySetup(true)}
               aria-label="Add inventory"
               className="
-                h-14 rounded-full flex items-center gap-2 px-4
+                h-14 rounded-full flex items-center gap-2 px-5
                 border-2 border-primary-200 bg-primary-surface text-primary-900
                 font-semibold text-sm transition-all duration-200
-                hover:border-primary-900 hover:shadow-card
+                hover:border-primary-900 hover:shadow-card active:scale-95
               "
             >
               <InventoryPlusIcon />
@@ -767,9 +813,7 @@ export default function HomePage() {
             {/* Voice (center) */}
             <VoiceButton
               voiceState={displayVoiceState}
-              interimTranscript={interimTranscript}
               isSupported={voiceSupported}
-              error={voiceError}
               onToggle={isProcessingChat ? () => {} : toggleListening}
               disabled={isProcessingChat}
             />
@@ -781,12 +825,12 @@ export default function HomePage() {
               aria-label={showTextInput ? "Close text input" : "Type instead"}
               aria-expanded={showTextInput}
               className={`
-                h-14 w-14 rounded-full flex items-center justify-center
-                border-2 transition-all duration-200
+                h-14 w-14 rounded-full flex items-center justify-center flex-shrink-0
+                border-2 transition-all duration-200 active:scale-95 shadow-sm
                 ${
                   showTextInput
                     ? "border-primary-900 bg-primary-surface text-primary-900"
-                    : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
+                    : "border-border bg-white text-text-secondary hover:border-text-secondary hover:text-text-primary"
                 }
               `}
             >
@@ -982,6 +1026,15 @@ function MutedSpeakerIcon() {
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
       <line x1="23" y1="9" x2="17" y2="15" />
       <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }

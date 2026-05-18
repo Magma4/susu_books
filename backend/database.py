@@ -15,13 +15,20 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# Convert sqlite:/// to sqlite+aiosqlite:/// for async driver
-_db_url = settings.database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+is_sqlite = settings.database_url.startswith("sqlite")
+
+# Convert connection strings for async drivers
+if is_sqlite:
+    _db_url = settings.database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+    connect_args = {"check_same_thread": False, "timeout": 30}
+else:
+    _db_url = settings.database_url.replace("postgresql://", "postgresql+asyncpg://").replace("postgres://", "postgresql+asyncpg://")
+    connect_args = {}
 
 engine = create_async_engine(
     _db_url,
     echo=settings.db_echo,
-    connect_args={"check_same_thread": False, "timeout": 30},
+    connect_args=connect_args,
     pool_pre_ping=True,
 )
 
@@ -39,15 +46,16 @@ class Base(DeclarativeBase):
     pass
 
 
-@event.listens_for(engine.sync_engine, "connect")
-def set_sqlite_pragmas(dbapi_connection, _connection_record) -> None:
-    """Make SQLite more resilient under concurrent UI polling + writes."""
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA busy_timeout=30000")
-    cursor.close()
+if is_sqlite:
+    @event.listens_for(engine.sync_engine, "connect")
+    def set_sqlite_pragmas(dbapi_connection, _connection_record) -> None:
+        """Make SQLite more resilient under concurrent UI polling + writes."""
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.close()
 
 
 async def create_tables() -> None:
@@ -55,7 +63,8 @@ async def create_tables() -> None:
     async with engine.begin() as conn:
         from models import Transaction, Inventory, DailySummary  # noqa: F401 — import to register models
         await conn.run_sync(Base.metadata.create_all)
-        await conn.run_sync(_ensure_sqlite_schema)
+        if is_sqlite:
+            await conn.run_sync(_ensure_sqlite_schema)
     logger.info("Database tables created/verified.")
 
 
