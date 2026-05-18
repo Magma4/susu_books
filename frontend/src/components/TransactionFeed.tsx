@@ -14,6 +14,8 @@ interface TransactionFeedProps {
   isLoading?: boolean;
   onTransactionChanged?: () => void;
   onNotify?: (type: "success" | "error" | "info" | "warning", msg: string) => void;
+  filterDate?: string;
+  onFilterDateChange?: (date: string) => void;
 }
 
 export default function TransactionFeed({
@@ -21,6 +23,8 @@ export default function TransactionFeed({
   isLoading = false,
   onTransactionChanged,
   onNotify,
+  filterDate = "",
+  onFilterDateChange,
 }: TransactionFeedProps) {
   const [newIds, setNewIds] = useState<Set<number>>(new Set());
   const prevCountRef = useRef(transactions.length);
@@ -40,8 +44,6 @@ export default function TransactionFeed({
     }
     prevCountRef.current = curr;
   }, [transactions]);
-
-  const [filterDate, setFilterDate] = useState<string>("");
 
   const filteredTransactions = transactions.filter((t) => {
     if (!filterDate) return true;
@@ -111,13 +113,13 @@ export default function TransactionFeed({
               id="ledger-date-filter"
               type="date"
               value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              onChange={(e) => onFilterDateChange?.(e.target.value)}
               className="text-xs border border-border rounded-xl px-2.5 py-1.5 bg-background text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-transparent cursor-pointer"
             />
             {filterDate && (
               <button
                 type="button"
-                onClick={() => setFilterDate("")}
+                onClick={() => onFilterDateChange?.("")}
                 className="text-xs font-medium text-primary-900 hover:text-primary-700 bg-primary-surface px-2.5 py-1.5 rounded-xl active:scale-95 transition-all"
               >
                 Clear
