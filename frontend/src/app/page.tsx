@@ -40,6 +40,7 @@ import {
   downloadTransactionsCsv,
   getHealth,
   sendChat,
+  getDailySummary,
   type HealthStatus,
 } from "@/lib/api";
 import { formatItemLabel } from "@/lib/display";
@@ -48,6 +49,7 @@ import type {
   LanguageCode,
   ChatResponse,
   ImageChatResponse,
+  DailySummaryData,
 } from "@/lib/types";
 import { LANGUAGES } from "@/lib/types";
 import { normalizeTranscriptDraft } from "@/lib/transcript";
@@ -115,6 +117,32 @@ export default function HomePage() {
     refreshToday,
     refreshAll,
   } = useApi();
+
+  // Date filtering and historic P&L summary
+  const [filterDate, setFilterDate] = useState<string>("");
+  const [historicSummary, setHistoricSummary] = useState<DailySummaryData | null>(null);
+  const [isLoadingHistoric, setIsLoadingHistoric] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!filterDate) {
+      setHistoricSummary(null);
+      return;
+    }
+
+    const loadHistoricSummary = async () => {
+      setIsLoadingHistoric(true);
+      try {
+        const summary = await getDailySummary(filterDate);
+        setHistoricSummary(summary);
+      } catch (err) {
+        console.error("Failed to load historic summary:", err);
+      } finally {
+        setIsLoadingHistoric(false);
+      }
+    };
+
+    loadHistoricSummary();
+  }, [filterDate]);
 
   // Health check (initial + manual retry)
   const checkHealth = useCallback(async (): Promise<HealthStatus | null> => {
@@ -672,12 +700,19 @@ export default function HomePage() {
                 isLoading={isLoadingInitial}
                 onTransactionChanged={refreshAll}
                 onNotify={addToast}
+                filterDate={filterDate}
+                onFilterDateChange={setFilterDate}
               />
             </div>
 
             {/* Right: Summary + Alerts (40%) */}
             <div className="lg:col-span-2 order-1 lg:order-2 space-y-4">
-              <DailySummary data={dailySummary} isLoading={isLoadingInitial} currency={currency} />
+              <DailySummary
+                data={filterDate ? historicSummary : dailySummary}
+                isLoading={isLoadingInitial || isLoadingHistoric}
+                currency={currency}
+                filterDate={filterDate}
+              />
 
               {weeklyReport && weeklyReport.daily_trend.length > 0 && (
                 <WeeklySpark data={weeklyReport.daily_trend} currency={currency} />
@@ -693,7 +728,7 @@ export default function HomePage() {
 
               <ActionPanel
                 alerts={inventoryAlerts}
-                summary={dailySummary}
+                summary={filterDate ? historicSummary : dailySummary}
                 backendOnline={backendOnline}
                 onExportLedger={handleExportLedger}
                 onBackupData={handleBackupData}

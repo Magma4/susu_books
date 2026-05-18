@@ -12,19 +12,21 @@ interface DailySummaryProps {
   data: DailySummaryData | null;
   currency?: string;
   isLoading?: boolean;
+  filterDate?: string;
 }
 
 export default function DailySummary({
   data,
   currency = "GHS",
   isLoading = false,
+  filterDate = "",
 }: DailySummaryProps) {
   return (
     <div className="bg-white rounded-2xl border border-border shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
-          Today&apos;s Results
+          {filterDate ? "Daily Results" : "Today's Results"}
         </span>
         {data?.top_selling_item && (
           <span className="text-2xs text-text-secondary bg-primary-surface px-2 py-0.5 rounded-full">
@@ -74,7 +76,7 @@ export default function DailySummary({
       )}
 
       {/* Comparison to yesterday */}
-      {data?.comparison_to_yesterday && (
+      {!filterDate && data?.comparison_to_yesterday && (
         <YesterdayComparison
           comparison={data.comparison_to_yesterday}
           currency={currency}
@@ -86,7 +88,7 @@ export default function DailySummary({
         <div className="px-4 pb-3 text-center">
           <span className="text-2xs text-text-secondary">
             {data.transaction_count} transaction
-            {data.transaction_count !== 1 ? "s" : ""} today
+            {data.transaction_count !== 1 ? "s" : ""} {filterDate ? "on this day" : "today"}
           </span>
         </div>
       )}
