@@ -143,7 +143,7 @@ export interface ImageChatResponse extends ChatResponse {
 // Language configuration
 // ---------------------------------------------------------------------------
 
-export type LanguageCode = "en" | "tw" | "ha" | "pcm" | "sw" | "fr" | "pt" | "es";
+export type LanguageCode = "en" | "tw" | "ha" | "pcm" | "sw" | "fr" | "pt" | "es" | "hi" | "zh" | "nl" | "ar" | "de" | "ja" | "ru";
 
 export interface LanguageConfig {
   code: LanguageCode;
@@ -211,6 +211,55 @@ export const LANGUAGES: LanguageConfig[] = [
     nativeName: "Español",
     speechCode: "es-ES",
     synthesisCode: "es-ES",
+  },
+  {
+    code: "hi",
+    name: "Hindi",
+    nativeName: "हिन्दी",
+    speechCode: "hi-IN",
+    synthesisCode: "hi-IN",
+  },
+  {
+    code: "zh",
+    name: "Chinese",
+    nativeName: "中文",
+    speechCode: "zh-CN",
+    synthesisCode: "zh-CN",
+  },
+  {
+    code: "nl",
+    name: "Dutch",
+    nativeName: "Nederlands",
+    speechCode: "nl-NL",
+    synthesisCode: "nl-NL",
+  },
+  {
+    code: "ar",
+    name: "Arabic",
+    nativeName: "العربية",
+    speechCode: "ar-SA",
+    synthesisCode: "ar-SA",
+  },
+  {
+    code: "de",
+    name: "German",
+    nativeName: "Deutsch",
+    speechCode: "de-DE",
+    synthesisCode: "de-DE",
+  },
+  {
+    code: "ja",
+    name: "Japanese",
+    nativeName: "日本語",
+    speechCode: "ja-JP",
+    synthesisCode: "ja-JP",
+  },
+  {
+    code: "ru",
+    name: "Russian",
+    nativeName: "Русский",
+    speechCode: "ru-RU",
+    synthesisCode: "ru-RU",
   },
 ];
 
