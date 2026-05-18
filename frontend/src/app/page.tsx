@@ -293,6 +293,14 @@ export default function HomePage() {
       setChatMessages((prev) => [...prev, userMsg]);
       setIsProcessingChat(true);
 
+      // Auto-scroll to the top so the user always sees the chat bubble
+      setTimeout(() => {
+        const mainZone = document.querySelector(".zone-main");
+        if (mainZone) {
+          mainZone.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }, 50);
+
       try {
         const recentHistory = chatMessages.slice(-6).map((m) => ({
           role: m.role,
@@ -652,10 +660,12 @@ export default function HomePage() {
             <div className="lg:col-span-3 order-2 lg:order-1 space-y-4">
               {/* AI conversation — shown above the ledger when active */}
               {(chatMessages.length > 0 || isProcessingChat) && (
-                <ChatBubble
-                  messages={chatMessages.slice(-6)}
-                  isTyping={isProcessingChat}
-                />
+                <div className="sticky top-2 z-30 drop-shadow-md transition-all duration-300">
+                  <ChatBubble
+                    messages={chatMessages.slice(-6)}
+                    isTyping={isProcessingChat}
+                  />
+                </div>
               )}
 
               <TransactionFeed
