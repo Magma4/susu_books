@@ -26,6 +26,7 @@ import InventorySetupForm from "@/components/InventorySetupForm";
 import ActionPanel from "@/components/ActionPanel";
 import ChatBubble from "@/components/ChatBubble";
 import LanguageSelector from "@/components/LanguageSelector";
+import CurrencySelector from "@/components/CurrencySelector";
 import OllamaOfflineScreen from "@/components/OllamaOfflineScreen";
 import DemoMode from "@/components/DemoMode";
 import PinAuthScreen, { type TraderProfile } from "@/components/PinAuthScreen";
@@ -75,6 +76,7 @@ export default function HomePage() {
   // State
   // ---------------------------------------------------------------------------
   const [language, setLanguage] = useState<LanguageCode>("en");
+  const [currency, setCurrency] = useState("GHS");
   const [activeProfile, setActiveProfile] = useState<TraderProfile | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isProcessingChat, setIsProcessingChat] = useState(false);
@@ -654,6 +656,7 @@ export default function HomePage() {
               </button>
             </div>
 
+            <CurrencySelector value={currency} onChange={setCurrency} />
             <LanguageSelector value={language} onChange={setLanguage} />
           </div>
         </div>
@@ -689,10 +692,10 @@ export default function HomePage() {
 
             {/* Right: Summary + Alerts (40%) */}
             <div className="lg:col-span-2 order-1 lg:order-2 space-y-4">
-              <DailySummary data={dailySummary} isLoading={isLoadingInitial} />
+              <DailySummary data={dailySummary} isLoading={isLoadingInitial} currency={currency} />
 
               {weeklyReport && weeklyReport.daily_trend.length > 0 && (
-                <WeeklySpark data={weeklyReport.daily_trend} currency="GHS" />
+                <WeeklySpark data={weeklyReport.daily_trend} currency={currency} />
               )}
 
               <InventoryPanel
@@ -700,6 +703,7 @@ export default function HomePage() {
                 isLoading={isLoadingInitial}
                 onInventoryChanged={refreshAll}
                 onNotify={addToast}
+                defaultCurrency={currency}
               />
 
               <ActionPanel
@@ -709,6 +713,7 @@ export default function HomePage() {
                 onExportLedger={handleExportLedger}
                 onBackupData={handleBackupData}
                 isExporting={exportState !== null}
+                currency={currency}
               />
             </div>
           </div>

@@ -17,6 +17,7 @@ interface InventoryPanelProps {
   isLoading?: boolean;
   onInventoryChanged?: () => Promise<void> | void;
   onNotify?: (type: "success" | "error", message: string) => void;
+  defaultCurrency?: string;
 }
 
 export default function InventoryPanel({
@@ -24,6 +25,7 @@ export default function InventoryPanel({
   isLoading = false,
   onInventoryChanged,
   onNotify,
+  defaultCurrency = "GHS",
 }: InventoryPanelProps) {
   const lowStockItems = items.filter((i) => i.is_low_stock && i.quantity > 0);
   const zeroStockItems = items.filter((i) => i.quantity <= 0);
@@ -65,6 +67,7 @@ export default function InventoryPanel({
               item={item}
               onInventoryChanged={onInventoryChanged}
               onNotify={onNotify}
+              defaultCurrency={defaultCurrency}
             />
           ))}
           {/* Low-stock items */}
@@ -74,6 +77,7 @@ export default function InventoryPanel({
               item={item}
               onInventoryChanged={onInventoryChanged}
               onNotify={onNotify}
+              defaultCurrency={defaultCurrency}
             />
           ))}
           {/* Healthy items */}
@@ -83,6 +87,7 @@ export default function InventoryPanel({
               item={item}
               onInventoryChanged={onInventoryChanged}
               onNotify={onNotify}
+              defaultCurrency={defaultCurrency}
             />
           ))}
         </div>
@@ -115,9 +120,10 @@ interface InventoryRowProps {
   item: InventoryItem;
   onInventoryChanged?: () => Promise<void> | void;
   onNotify?: (type: "success" | "error", message: string) => void;
+  defaultCurrency?: string;
 }
 
-function InventoryRow({ item, onInventoryChanged, onNotify }: InventoryRowProps) {
+function InventoryRow({ item, onInventoryChanged, onNotify, defaultCurrency = "GHS" }: InventoryRowProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -346,12 +352,12 @@ function InventoryRow({ item, onInventoryChanged, onNotify }: InventoryRowProps)
           </p>
           {item.avg_cost != null && (
             <p className="text-2xs text-text-secondary">
-              avg cost {formatAmount(item.avg_cost, "GHS")} / {costUnitLabel}
+              avg cost {formatAmount(item.avg_cost, defaultCurrency)} / {costUnitLabel}
             </p>
           )}
           {item.sale_price_amount != null && item.sale_price_quantity != null && (
             <p className="text-2xs text-primary-700">
-              sells {formatAmount(item.sale_price_amount, item.sale_currency ?? "GHS")} /{" "}
+              sells {formatAmount(item.sale_price_amount, item.sale_currency ?? defaultCurrency)} /{" "}
               {item.sale_price_quantity.toLocaleString()}{" "}
               {formatUnitLabel(item.unit ?? "unit", item.sale_price_quantity)}
             </p>

@@ -124,9 +124,17 @@ export function formatAmount(amount: number, currency = "GHS"): string {
     TZS: "TSh",
     XOF: "CFA",
     USD: "$",
+    EUR: "€",
+    GBP: "£",
+    INR: "₹",
+    CNY: "¥",
+    JPY: "¥",
+    RUB: "₽",
+    AED: "د.إ",
+    SAR: "﷼",
   };
   const sym = symbols[currency] ?? currency + " ";
-  return `${sym}${amount.toLocaleString("en-GH", {
+  return `${sym}${amount.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

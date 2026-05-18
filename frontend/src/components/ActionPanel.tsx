@@ -15,6 +15,7 @@ interface ActionPanelProps {
   onExportLedger: () => void;
   onBackupData: () => void;
   isExporting?: boolean;
+  currency?: string;
 }
 
 export default function ActionPanel({
@@ -24,6 +25,7 @@ export default function ActionPanel({
   onExportLedger,
   onBackupData,
   isExporting = false,
+  currency = "GHS",
 }: ActionPanelProps) {
   const hasAlerts =
     (alerts?.low_stock_count ?? 0) > 0 ||
@@ -78,7 +80,7 @@ export default function ActionPanel({
 
         {/* Positive insights from today's summary */}
         {summary && summary.net_profit > 0 && (
-          <InsightCard summary={summary} />
+          <InsightCard summary={summary} currency={currency} />
         )}
 
         {/* Profit margin nudge */}
@@ -178,16 +180,21 @@ function AlertCard({ type, icon, title, message }: AlertCardProps) {
   );
 }
 
-function InsightCard({ summary }: { summary: DailySummaryData }) {
+interface InsightCardProps {
+  summary: DailySummaryData;
+  currency: string;
+}
+
+function InsightCard({ summary, currency }: InsightCardProps) {
   const comp = summary.comparison_to_yesterday;
   const better = comp && comp.profit_change > 0;
   const sameAsYesterday = comp && comp.profit_change === 0;
   const comparisonText = comp
     ? better
-      ? `Up ${formatAmount(comp.profit_change, "GHS")} from yesterday.`
+      ? `Up ${formatAmount(comp.profit_change, currency)} from yesterday.`
       : sameAsYesterday
         ? "Same profit as yesterday."
-        : `Down ${formatAmount(Math.abs(comp.profit_change), "GHS")} from yesterday.`
+        : `Down ${formatAmount(Math.abs(comp.profit_change), currency)} from yesterday.`
     : null;
 
   return (
@@ -203,7 +210,7 @@ function InsightCard({ summary }: { summary: DailySummaryData }) {
           <p className="text-xs text-primary-800 opacity-80 mt-0.5">
             Profit so far:{" "}
             <span className="font-mono font-semibold">
-              {formatAmount(summary.net_profit, "GHS")}
+              {formatAmount(summary.net_profit, currency)}
             </span>
           </p>
           {comparisonText && (
