@@ -4,6 +4,10 @@
   <img src="frontend/public/logo.png" alt="Susu Books Logo" width="120" />
 </p>
 
+<p align="center">
+  <a href="https://susu-books-frontend.onrender.com" target="_blank"><strong>✨ Explore the Live Demo ✨</strong></a>
+</p>
+
 **Susu Books** is a voice-first, entirely offline AI ledger application designed to bring modern business intelligence to informal market traders across the globe. By leveraging **Gemma 4** running locally via **Ollama**, it replaces complex accounting software with a natural, multi-lingual, and multi-currency voice interface that requires zero internet connection.
 
 ## 🏆 Kaggle Gemma 4 Impact Challenge Submission
