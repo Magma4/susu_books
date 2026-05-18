@@ -60,6 +60,8 @@ const config: Config = {
         "pulse-ring": "pulse-ring 1.4s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite",
         // Transaction card slide-in
         "slide-in": "slide-in 0.3s ease-out forwards",
+        // Bottom sheet / modal entrance
+        "slide-up": "slide-up 0.22s ease-out forwards",
         // Loading dots
         "bounce-dot": "bounce-dot 1.4s ease-in-out infinite",
         // Checkmark flash
@@ -91,6 +93,10 @@ const config: Config = {
         "slide-in": {
           from: { transform: "translateY(-16px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "slide-up": {
+          from: { transform: "translateY(18px) scale(0.98)", opacity: "0" },
+          to: { transform: "translateY(0) scale(1)", opacity: "1" },
         },
         "bounce-dot": {
           "0%, 80%, 100%": { transform: "scale(0)", opacity: "0.3" },

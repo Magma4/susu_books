@@ -22,6 +22,7 @@ import TransactionFeed from "@/components/TransactionFeed";
 import DailySummary from "@/components/DailySummary";
 import WeeklySpark from "@/components/WeeklySpark";
 import InventoryPanel from "@/components/InventoryPanel";
+import InventorySetupForm from "@/components/InventorySetupForm";
 import ActionPanel from "@/components/ActionPanel";
 import ChatBubble from "@/components/ChatBubble";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -82,6 +83,7 @@ export default function HomePage() {
   const [isRetryingHealth, setIsRetryingHealth] = useState(false);
   const [draftSource, setDraftSource] = useState<"voice" | null>(null);
   const [exportState, setExportState] = useState<"csv" | "backup" | null>(null);
+  const [showInventorySetup, setShowInventorySetup] = useState(false);
 
   // Connectivity state (more nuanced than just backendOnline)
   const [healthState, setHealthState] = useState<{
@@ -737,7 +739,24 @@ export default function HomePage() {
           )}
 
           {/* Main button row */}
-          <div className="flex items-center justify-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
+            {/* Inventory setup */}
+            <button
+              type="button"
+              onClick={() => setShowInventorySetup(true)}
+              aria-label="Add inventory"
+              className="
+                h-14 rounded-full flex items-center gap-2 px-4
+                border-2 border-primary-200 bg-primary-surface text-primary-900
+                font-semibold text-sm transition-all duration-200
+                hover:border-primary-900 hover:shadow-card
+              "
+            >
+              <InventoryPlusIcon />
+              <span className="hidden sm:inline">Add inventory</span>
+              <span className="sm:hidden">Stock</span>
+            </button>
+
             {/* Camera */}
             <CameraButton
               language={language}
@@ -778,6 +797,53 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {showInventorySetup && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm px-4 py-6 flex items-end sm:items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inventory-setup-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setShowInventorySetup(false)}
+            aria-label="Close inventory setup"
+          />
+          <div className="relative w-full max-w-xl rounded-[2rem] bg-white shadow-card-hover border border-border overflow-hidden animate-slide-up">
+            <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-4">
+              <div>
+                <p
+                  id="inventory-setup-title"
+                  className="text-sm font-semibold text-text-primary uppercase tracking-wide"
+                >
+                  Add inventory
+                </p>
+                <p className="mt-1 text-sm text-text-secondary">
+                  Set an item, stock level, and selling rule before recording sales.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInventorySetup(false)}
+                className="h-9 w-9 rounded-full border border-border text-text-secondary hover:text-text-primary hover:border-text-secondary"
+                aria-label="Close inventory setup"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-5">
+              <InventorySetupForm
+                collapsible={false}
+                onInventoryChanged={refreshAll}
+                onNotify={addToast}
+                onSaved={() => setShowInventorySetup(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Toast Notifications                                                 */}
@@ -886,6 +952,18 @@ function KeyboardIcon() {
       <line x1="14" y1="10" x2="14" y2="10" strokeWidth={3} strokeLinecap="round" />
       <line x1="18" y1="10" x2="18" y2="10" strokeWidth={3} strokeLinecap="round" />
       <line x1="6" y1="14" x2="18" y2="14" strokeWidth={3} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function InventoryPlusIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 6h16" />
+      <path d="M4 10h16" />
+      <path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+      <path d="M12 14v4" />
+      <path d="M10 16h4" />
     </svg>
   );
 }
