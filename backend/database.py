@@ -22,7 +22,13 @@ if is_sqlite:
     _db_url = settings.database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
     connect_args = {"check_same_thread": False, "timeout": 30}
 else:
-    _db_url = settings.database_url.replace("postgresql://", "postgresql+asyncpg://").replace("postgres://", "postgresql+asyncpg://")
+    # asyncpg expects 'ssl=require' instead of standard libpq 'sslmode=require'
+    _db_url = (
+        settings.database_url
+        .replace("postgresql://", "postgresql+asyncpg://")
+        .replace("postgres://", "postgresql+asyncpg://")
+        .replace("sslmode=require", "ssl=require")
+    )
     connect_args = {}
 
 engine = create_async_engine(
