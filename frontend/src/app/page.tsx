@@ -559,7 +559,7 @@ export default function HomePage() {
           </p>
 
           {/* Right controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto scrollbar-none pb-1 -mb-1 max-w-[65vw] sm:max-w-none">
             {/* Backend status dot */}
             <div
               className={`h-2 w-2 rounded-full flex-shrink-0 transition-colors duration-500 ${
@@ -576,7 +576,7 @@ export default function HomePage() {
               type="button"
               onClick={() => setVoiceRepliesEnabled((v) => !v)}
               className={`
-                h-8 w-8 rounded-full border flex items-center justify-center transition-colors
+                h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 rounded-full border flex items-center justify-center transition-colors
                 ${
                   voiceRepliesEnabled
                     ? "border-primary-900 bg-primary-surface text-primary-900"
@@ -586,14 +586,16 @@ export default function HomePage() {
               title={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
               aria-label={voiceRepliesEnabled ? "Turn off spoken replies" : "Turn on spoken replies"}
             >
-              {voiceRepliesEnabled ? <SpeakerIcon /> : <MutedSpeakerIcon />}
+              <div className="scale-75 sm:scale-100">
+                {voiceRepliesEnabled ? <SpeakerIcon /> : <MutedSpeakerIcon />}
+              </div>
             </button>
 
             {/* Demo mode toggle */}
             <button
               onClick={() => setIsDemoMode((v) => !v)}
               className={`
-                text-xs font-semibold px-2.5 py-1 rounded-full border transition-all duration-200
+                text-[10px] sm:text-xs font-semibold px-2 py-1 flex-shrink-0 rounded-full border transition-all duration-200
                 ${
                   isDemoMode
                     ? "bg-accent-800 text-white border-accent-800"
@@ -606,7 +608,7 @@ export default function HomePage() {
             </button>
 
             {/* Lock App button */}
-            <div className="flex items-center gap-1 bg-background border border-border pl-3 pr-1 py-1 rounded-full ml-2">
+            <div className="flex items-center gap-1 bg-background border border-border pl-1.5 sm:pl-3 pr-1 py-1 flex-shrink-0 rounded-full">
               <span className="text-xs font-semibold text-text-primary hidden sm:block">
                 {activeProfile.name}
               </span>
