@@ -4,6 +4,8 @@
   "sale_confirmed": "Registrado. Vendiste {quantity} {unit} de {item} por {currency} {total_amount}. Ganancia: {currency} {profit}. Inventario: {remaining_stock} {unit}.",
   "sale_low_stock_warning": "Venta registrada. Atención: solo quedan {remaining_stock} {unit} de {item}.",
   "sale_out_of_stock": "Venta registrada. Atención: {item} ya no tiene inventario. Repón pronto.",
+  "sale_out_of_stock_blocked": "No se registró. {item} está sin inventario. Agrega inventario o compra más antes de vender.",
+  "sale_insufficient_stock": "No se registró. Solo quedan {remaining_stock} {unit} de {item}, pero esta venta necesita {quantity} {unit}. Repón primero.",
   "expense_confirmed": "Registrado. Gasto de {category}: {currency} {amount}. Gastos totales de hoy: {currency} {total_expenses_today}.",
   "inventory_single": "{item}: {quantity} {unit} en inventario. Costo promedio: {currency} {avg_cost} por {unit}.",
   "inventory_low": "Alerta de bajo inventario. {item}: solo quedan {quantity} {unit}.",

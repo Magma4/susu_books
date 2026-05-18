@@ -4,6 +4,8 @@
   "sale_confirmed": "Enregistré. Vente de {quantity} {unit} de {item} pour {currency} {total_amount}. Bénéfice : {currency} {profit}. Stock : {remaining_stock} {unit}.",
   "sale_low_stock_warning": "Vente enregistrée. Attention : il ne reste que {remaining_stock} {unit} de {item} !",
   "sale_out_of_stock": "Vente enregistrée. Attention : {item} est maintenant en rupture de stock ! Réapprovisionnez vite.",
+  "sale_out_of_stock_blocked": "Non enregistré. {item} est en rupture de stock. Ajoutez du stock ou réapprovisionnez avant de vendre.",
+  "sale_insufficient_stock": "Non enregistré. Il ne reste que {remaining_stock} {unit} de {item}, mais cette vente demande {quantity} {unit}. Réapprovisionnez d'abord.",
   "expense_confirmed": "Enregistré. Dépense {category} : {currency} {amount}. Dépenses totales aujourd'hui : {currency} {total_expenses_today}.",
   "inventory_single": "{item} : {quantity} {unit} en stock. Coût moyen : {currency} {avg_cost} par {unit}.",
   "inventory_low": "Alerte stock bas ! {item} : seulement {quantity} {unit} restants.",

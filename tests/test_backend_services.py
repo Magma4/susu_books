@@ -218,6 +218,65 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
         self.assertIsNotNone(transaction_inventory)
         self.assertEqual(transaction_inventory.quantity, 9.0)
 
+    async def test_sale_without_stock_is_not_recorded(self) -> None:
+        ledger = LedgerService(self.session)
+        inventory_service = InventoryService(self.session)
+
+        sale_result = await ledger.record_sale(
+            RecordSaleArgs(
+                item="tomatoes",
+                quantity=1,
+                unit="crates",
+                sale_price=50,
+                currency="GHS",
+            )
+        )
+
+        transactions = await ledger.get_transactions(transaction_type="sale")
+        inventory = await inventory_service.get_item("tomatoes")
+        self.assertTrue(sale_result["not_recorded"])
+        self.assertEqual(sale_result["reason"], "out_of_stock")
+        self.assertIsNone(sale_result["transaction_id"])
+        self.assertEqual(sale_result["remaining_stock"], 0.0)
+        self.assertEqual(transactions, [])
+        self.assertIsNone(inventory)
+
+    async def test_sale_above_available_stock_is_not_recorded(self) -> None:
+        inventory_service = InventoryService(self.session)
+        ledger = LedgerService(self.session)
+
+        await inventory_service.setup_item(
+            InventorySetup(
+                item="plantains",
+                quantity=2,
+                unit="pieces",
+                sale_price_amount=8,
+                sale_price_quantity=4,
+                avg_cost=1,
+                low_stock_threshold=5,
+            )
+        )
+
+        sale_result = await ledger.record_sale(
+            RecordSaleArgs(
+                item="borɔdeɛ",
+                quantity=4,
+                unit="pieces",
+                sale_price=2,
+                currency="GHS",
+            )
+        )
+
+        transactions = await ledger.get_transactions(transaction_type="sale")
+        inventory = await inventory_service.get_item("plantains")
+        self.assertTrue(sale_result["not_recorded"])
+        self.assertEqual(sale_result["reason"], "insufficient_stock")
+        self.assertIsNone(sale_result["transaction_id"])
+        self.assertEqual(sale_result["remaining_stock"], 2.0)
+        self.assertEqual(transactions, [])
+        self.assertIsNotNone(inventory)
+        self.assertEqual(inventory.quantity, 2.0)
+
     async def test_daily_summary_and_credit_profile_are_consistent(self) -> None:
         ledger = LedgerService(self.session)
         report_service = ReportService(self.session)
@@ -297,6 +356,18 @@ class LedgerAndReportingTests(AsyncDatabaseTestCase):
 
 class GemmaFallbackTests(AsyncDatabaseTestCase):
     async def test_known_twi_sale_uses_rule_fallback_without_waiting_for_model(self) -> None:
+        inventory_service = InventoryService(self.session)
+        await inventory_service.setup_item(
+            InventorySetup(
+                item="gyeene",
+                quantity=5,
+                unit="pieces",
+                sale_price_amount=10,
+                sale_price_quantity=1,
+                avg_cost=5,
+                low_stock_threshold=1,
+            )
+        )
         service = GemmaService(self.session)
 
         async def fake_extraction_pass(_messages):
@@ -312,6 +383,24 @@ class GemmaFallbackTests(AsyncDatabaseTestCase):
         self.assertEqual(transactions[0].item, "onions")
         self.assertEqual(calls[0].name, "record_sale")
         self.assertIn("onions", response)
+
+    async def test_known_sale_without_stock_returns_restock_prompt(self) -> None:
+        service = GemmaService(self.session)
+
+        async def fake_extraction_pass(_messages):
+            raise AssertionError("Known deterministic phrases should not wait for Gemma.")
+
+        service._run_extraction_pass = fake_extraction_pass
+        try:
+            response, transactions, calls = await service.chat("mereto gyeene 10 GHS", language="en")
+        finally:
+            await service.close()
+
+        self.assertEqual(transactions, [])
+        self.assertEqual(calls[0].name, "record_sale")
+        self.assertTrue(calls[0].result["not_recorded"])
+        self.assertIn("Not recorded", response)
+        self.assertIn("out of stock", response)
 
 
 class RuleExtractionTests(unittest.TestCase):

@@ -57,6 +57,10 @@ class TemplateService:
             return "purchase_confirmed_with_supplier" if result.get("supplier") else "purchase_confirmed"
 
         if function_name == "record_sale":
+            if result.get("not_recorded") and result.get("reason") == "insufficient_stock":
+                return "sale_insufficient_stock"
+            if result.get("not_recorded") and result.get("out_of_stock"):
+                return "sale_out_of_stock_blocked"
             if result.get("out_of_stock"):
                 return "sale_out_of_stock"
             if result.get("low_stock_warning"):

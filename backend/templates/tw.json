@@ -4,6 +4,8 @@
   "sale_confirmed": "Yɛakyerɛw. Wotɔn {item} {quantity} {unit}, {currency} {total_amount}. Wo mfaso: {currency} {profit}. Wo stock: {remaining_stock} {unit}.",
   "sale_low_stock_warning": "Yɛakyerɛw. Nanso {item} aka {remaining_stock} {unit} nkoa!",
   "sale_out_of_stock": "Yɛakyerɛw. Nanso {item} asa! Kɔtɔ bi ntɛm.",
+  "sale_out_of_stock_blocked": "Yɛankyerɛw. {item} asa wɔ stock mu. Kɔtɔ bi ansa na woatɔn.",
+  "sale_insufficient_stock": "Yɛankyerɛw. {item} aka {remaining_stock} {unit} nkoa, nanso sale yi hia {quantity} {unit}. Kɔtɔ bi ansa.",
   "expense_confirmed": "Yɛakyerɛw. {category}: {currency} {amount}. Ɛnnɛ sika a woadi: {currency} {total_expenses_today}.",
   "inventory_single": "{item}: {quantity} {unit} wɔ wo stock mu. Ne bo: {currency} {avg_cost} biara.",
   "inventory_low": "Kɔkɔ! {item}: aka {quantity} {unit} nkoa.",

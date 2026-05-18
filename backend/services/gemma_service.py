@@ -339,7 +339,9 @@ class GemmaService:
         if name == "record_sale":
             parsed = RecordSaleArgs(**args)
             result = await self.ledger.record_sale(parsed, language=language, source=source, raw_input=raw_input)
-            transaction = await self._fetch_transaction(int(result["transaction_id"]))
+            transaction_id = result.get("transaction_id")
+            if transaction_id is not None:
+                transaction = await self._fetch_transaction(int(transaction_id))
             return result, transaction
 
         if name == "record_expense":

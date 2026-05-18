@@ -4,6 +4,8 @@
   "sale_confirmed": "E don enter. You sell {item} {quantity} {unit}, {currency} {total_amount}. Gain: {currency} {profit}. Stock: {remaining_stock} {unit}.",
   "sale_low_stock_warning": "E don enter. But {item} don dey finish — e remain {remaining_stock} {unit} only!",
   "sale_out_of_stock": "E don enter. But {item} don finish! Go buy more quick.",
+  "sale_out_of_stock_blocked": "I no record am. {item} don finish for stock. Add stock or go buy more before you sell.",
+  "sale_insufficient_stock": "I no record am. Na only {remaining_stock} {unit} of {item} remain, but this sale need {quantity} {unit}. Add stock first.",
   "expense_confirmed": "E don enter. {category}: {currency} {amount}. Total wey you spend today: {currency} {total_expenses_today}.",
   "inventory_single": "{item}: {quantity} {unit} dey stock. Price: {currency} {avg_cost} each.",
   "inventory_low": "Warning! {item}: e remain {quantity} {unit} only.",

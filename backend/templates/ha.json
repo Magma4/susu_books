@@ -4,6 +4,8 @@
   "sale_confirmed": "An rubuta. Ka sayar da {item} {quantity} {unit}, {currency} {total_amount}. Riba: {currency} {profit}. Stock: {remaining_stock} {unit}.",
   "sale_low_stock_warning": "An rubuta. Amma {item} ya rage — sai {remaining_stock} {unit} ya saura!",
   "sale_out_of_stock": "An rubuta. Amma {item} ya ƙare! Ka sayo wani.",
+  "sale_out_of_stock_blocked": "Ba a rubuta ba. {item} ya ƙare a stock. Ka ƙara kaya kafin ka sayar.",
+  "sale_insufficient_stock": "Ba a rubuta ba. {item} ya rage {remaining_stock} {unit} kawai, amma wannan sale yana bukatar {quantity} {unit}. Ka ƙara kaya tukuna.",
   "expense_confirmed": "An rubuta. {category}: {currency} {amount}. Jimlar kashe kuɗi yau: {currency} {total_expenses_today}.",
   "inventory_single": "{item}: {quantity} {unit} a cikin stock. Farashin: {currency} {avg_cost} kowane.",
   "inventory_low": "Gargaɗi! {item}: sai {quantity} {unit} ya rage.",

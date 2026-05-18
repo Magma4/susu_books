@@ -4,6 +4,8 @@
   "sale_confirmed": "Imeandikwa. Umeuzwa {item} {quantity} {unit}, {currency} {total_amount}. Faida: {currency} {profit}. Stoki: {remaining_stock} {unit}.",
   "sale_low_stock_warning": "Imeandikwa. Lakini {item} inakaribia kuisha — imebaki {remaining_stock} {unit} tu!",
   "sale_out_of_stock": "Imeandikwa. Lakini {item} imeisha! Nunua tena haraka.",
+  "sale_out_of_stock_blocked": "Haijaandikwa. {item} imeisha kwenye stoki. Ongeza stoki au nunua tena kabla ya kuuza.",
+  "sale_insufficient_stock": "Haijaandikwa. {item} imebaki {remaining_stock} {unit} tu, lakini mauzo haya yanahitaji {quantity} {unit}. Ongeza stoki kwanza.",
   "expense_confirmed": "Imeandikwa. {category}: {currency} {amount}. Jumla ya matumizi leo: {currency} {total_expenses_today}.",
   "inventory_single": "{item}: {quantity} {unit} katika stoki. Bei: {currency} {avg_cost} kila moja.",
   "inventory_low": "Onyo! {item}: imebaki {quantity} {unit} tu.",

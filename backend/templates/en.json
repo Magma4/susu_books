@@ -4,6 +4,8 @@
   "sale_confirmed": "Recorded. Sold {quantity} {unit} of {item} for {currency} {total_amount}. Profit: {currency} {profit}. Stock: {remaining_stock} {unit}.",
   "sale_low_stock_warning": "Recorded sale. But warning: only {remaining_stock} {unit} of {item} left!",
   "sale_out_of_stock": "Recorded sale. But warning: {item} is now out of stock! Restock soon.",
+  "sale_out_of_stock_blocked": "Not recorded. {item} is out of stock. Add inventory or buy more before selling.",
+  "sale_insufficient_stock": "Not recorded. Only {remaining_stock} {unit} of {item} is in stock, but this sale needs {quantity} {unit}. Restock first.",
   "expense_confirmed": "Recorded. {category} expense: {currency} {amount}. Total expenses today: {currency} {total_expenses_today}.",
   "inventory_single": "{item}: {quantity} {unit} in stock. Average cost: {currency} {avg_cost} per {unit}.",
   "inventory_low": "Low stock warning! {item}: only {quantity} {unit} left.",

@@ -129,6 +129,43 @@ class LedgerService:
         elif unit == "lot" and quantity == 1 and inventory_before_sale is not None and inventory_before_sale.unit:
             unit = normalize_unit_name(inventory_before_sale.unit)
 
+        available_quantity = inventory_before_sale.quantity if inventory_before_sale is not None else 0.0
+        if inventory_before_sale is None or available_quantity <= 0:
+            return {
+                "transaction_id": None,
+                "not_recorded": True,
+                "reason": "out_of_stock",
+                "item": item,
+                "quantity": quantity,
+                "unit": unit,
+                "sale_price": sale_price,
+                "total_amount": 0.0,
+                "currency": args.currency,
+                "customer": args.customer,
+                "profit": 0.0,
+                "remaining_stock": 0.0,
+                "low_stock_warning": True,
+                "out_of_stock": True,
+            }
+
+        if available_quantity < quantity:
+            return {
+                "transaction_id": None,
+                "not_recorded": True,
+                "reason": "insufficient_stock",
+                "item": item,
+                "quantity": quantity,
+                "unit": unit,
+                "sale_price": sale_price,
+                "total_amount": 0.0,
+                "currency": args.currency,
+                "customer": args.customer,
+                "profit": 0.0,
+                "remaining_stock": round(available_quantity, 2),
+                "low_stock_warning": available_quantity <= inventory_before_sale.low_stock_threshold,
+                "out_of_stock": False,
+            }
+
         total_amount = round(quantity * sale_price, 2)
         notes = " ".join(part for part in (args.notes, pricing_note) if part)
 
