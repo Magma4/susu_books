@@ -159,14 +159,14 @@ export const LANGUAGES: LanguageConfig[] = [
     code: "tw",
     name: "Twi",
     nativeName: "Twi (Akan)",
-    speechCode: "en-GH",
+    speechCode: "ak-GH",
     synthesisCode: "ak-GH",
   },
   {
     code: "ha",
     name: "Hausa",
     nativeName: "Hausa",
-    speechCode: "en-NG",
+    speechCode: "ha-NG",
     synthesisCode: "ha-NG",
   },
   {

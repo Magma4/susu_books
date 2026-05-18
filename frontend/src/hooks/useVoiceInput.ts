@@ -90,7 +90,20 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
-    recognition.lang = language;
+
+    // Apple's dictation engine (iOS/Safari) aggressively auto-corrects and crashes
+    // on native African tags like ak-GH. We fallback to regional English just for them.
+    let resolvedLanguage = language;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    if (isIOS || isSafari) {
+      if (language === "ak-GH") resolvedLanguage = "en-GH";
+      if (language === "ha-NG") resolvedLanguage = "en-NG";
+    }
+
+    recognition.lang = resolvedLanguage;
 
     recognition.onstart = () => {
       recognitionActiveRef.current = true;
